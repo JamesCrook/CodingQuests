@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3-SAT & DPLL Explainer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #020617;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      color: #f8fafc;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .tab-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #1e293b;
+      color: #94a3b8;
+    }
+    
+    .tab-btn:hover {
+      background: #334155;
+    }
+    
+    .tab-btn.active {
+      background: #2563eb;
+      color: white;
+    }
+    
+    .slider-container {
+      width: 100%;
+      max-width: 28rem;
+      margin-bottom: 1rem;
+      padding: 0 1rem;
+      display: none;
+    }
+    
+    .slider-container.visible {
+      display: block;
+    }
+    
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .slider-header span {
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+    
+    .slider-header strong {
+      color: white;
+      font-weight: 500;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 0.5rem;
+      background: #334155;
+      border-radius: 0.5rem;
+      appearance: none;
+      cursor: pointer;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 1rem;
+      height: 1rem;
+      background: #3b82f6;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+    
+    .slider-labels span.active {
+      color: #60a5fa;
+    }
+    
+    .slider-description {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+    }
+    
+    .dpll-controls {
+      display: none;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .dpll-controls.visible {
+      display: flex;
+    }
+    
+    .dpll-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: white;
+    }
+    
+    .dpll-btn.step { background: #047857; }
+    .dpll-btn.step:hover { background: #059669; }
+    .dpll-btn.propagate { background: #1d4ed8; }
+    .dpll-btn.propagate:hover { background: #2563eb; }
+    .dpll-btn.run { background: #7c3aed; }
+    .dpll-btn.run:hover { background: #8b5cf6; }
+    .dpll-btn.reset { background: #334155; }
+    .dpll-btn.reset:hover { background: #475569; }
+    
+    .dpll-btn:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+    
+    canvas {
+      border-radius: 0.75rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+    
+    .help-text {
+      color: #64748b;
+      font-size: 0.875rem;
+      margin-top: 0.75rem;
+      text-align: center;
+      max-width: 32rem;
+    }
+    
+    .help-text p {
+      margin: 0.25rem 0;
+    }
+    
+    .help-text strong {
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs" id="tabs"></div>
+  
+  <div class="slider-container" id="slider-container">
+    <div class="slider-header">
+      <span>Difficulty:</span>
+      <strong id="difficulty-name"></strong>
+    </div>
+    <input type="range" id="difficulty-slider" min="0" max="3" value="0">
+    <div class="slider-labels" id="slider-labels"></div>
+    <p class="slider-description" id="difficulty-desc"></p>
+  </div>
+  
+  <div class="dpll-controls" id="dpll-controls">
+    <button class="dpll-btn step" id="btn-step">Step →</button>
+    <button class="dpll-btn propagate" id="btn-propagate">Propagate All ⇒</button>
+    <button class="dpll-btn run" id="btn-run">Run to End ⏭</button>
+    <button class="dpll-btn reset" id="btn-reset">Reset ↺</button>
+  </div>
+  
+  <canvas id="canvas" width="750" height="700"></canvas>
+  
+  <div class="help-text" id="help-text"></div>
+
+  <script>
+// ============================================================================
+// CONFIGURATION & CONSTANTS
+// ============================================================================
+
+const CONFIG = {
+  canvas: { width: 750, height: 700 },
+  
+  colors: {
+    bg: '#0f172a',
+    bgLight: '#1e293b',
+    bgLighter: '#334155',
+    text: '#f8fafc',
+    textMuted: '#94a3b8',
+    textDim: '#64748b',
+    
+    satisfied: '#22c55e',
+    satisfiedBg: '#14532d',
+    satisfiedLight: '#4ade80',
+    satisfiedPale: '#86efac',
+    
+    unsatisfied: '#ef4444',
+    unsatisfiedBg: '#450a0a',
+    unsatisfiedLight: '#f87171',
+    unsatisfiedPale: '#fca5a5',
+    
+    positive: '#10b981',
+    negative: '#ef4444',
+    or: '#f59e0b',
+    and: '#f8fafc',
+    
+    accent: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'],
+    
+    highlight: '#60a5fa',
+    warning: '#fdba74',
+  },
+  
+  fonts: {
+    title: 'bold 24px system-ui',
+    subtitle: 'bold 18px system-ui',
+    body: '14px system-ui',
+    bodyBold: 'bold 14px system-ui',
+    small: '12px system-ui',
+    smallBold: 'bold 12px system-ui',
+    clause: '15px system-ui',
+    clauseBold: 'bold 15px system-ui',
+    variable: 'bold 16px system-ui',
+    symbol: '18px system-ui',
+  },
+  
+  spacing: {
+    margin: 30,
+    padding: 12,
+    gap: 8,
+  },
+};
+
+// ============================================================================
+// PROBLEM INSTANCES
+// ============================================================================
+
+const PROBLEMS = [
+  {
+    name: 'Easy',
+    description: 'Many solutions — good for learning',
+    variables: ['x1', 'x2', 'x3', 'x4'],
+    clauses: [
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: false }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: false }, { var: 'x4', neg: false }],
+      [{ var: 'x2', neg: false }, { var: 'x3', neg: true }, { var: 'x4', neg: false }],
+      [{ var: 'x1', neg: false }, { var: 'x3', neg: false }, { var: 'x4', neg: true }],
+    ],
+    initialAssignment: { x1: true, x2: true, x3: false, x4: false },
+  },
+  {
+    name: 'Medium',
+    description: 'Fewer solutions — requires thought',
+    variables: ['x1', 'x2', 'x3', 'x4', 'x5'],
+    clauses: [
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: true }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: false }, { var: 'x4', neg: false }],
+      [{ var: 'x2', neg: false }, { var: 'x3', neg: true }, { var: 'x4', neg: true }],
+      [{ var: 'x1', neg: false }, { var: 'x3', neg: false }, { var: 'x5', neg: false }],
+      [{ var: 'x2', neg: true }, { var: 'x4', neg: false }, { var: 'x5', neg: true }],
+      [{ var: 'x3', neg: false }, { var: 'x4', neg: true }, { var: 'x5', neg: false }],
+    ],
+    initialAssignment: { x1: false, x2: true, x3: false, x4: true, x5: false },
+  },
+  {
+    name: 'Hard',
+    description: 'Tight constraints — very few solutions',
+    variables: ['x1', 'x2', 'x3', 'x4', 'x5', 'x6'],
+    clauses: [
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: true }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: false }, { var: 'x4', neg: false }],
+      [{ var: 'x2', neg: false }, { var: 'x3', neg: true }, { var: 'x4', neg: true }],
+      [{ var: 'x1', neg: false }, { var: 'x3', neg: false }, { var: 'x5', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x3', neg: true }, { var: 'x5', neg: true }],
+      [{ var: 'x2', neg: true }, { var: 'x4', neg: true }, { var: 'x6', neg: false }],
+      [{ var: 'x1', neg: false }, { var: 'x4', neg: false }, { var: 'x6', neg: true }],
+      [{ var: 'x2', neg: false }, { var: 'x5', neg: true }, { var: 'x6', neg: true }],
+      [{ var: 'x3', neg: false }, { var: 'x4', neg: false }, { var: 'x5', neg: true }],
+      [{ var: 'x1', neg: true }, { var: 'x5', neg: false }, { var: 'x6', neg: false }],
+    ],
+    initialAssignment: { x1: false, x2: false, x3: false, x4: false, x5: false, x6: false },
+  },
+  {
+    name: 'Unsatisfiable',
+    description: 'No solution exists — demonstrates backtracking',
+    variables: ['x1', 'x2', 'x3', 'x4'],
+    clauses: [
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: false }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: false }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: true }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: true }, { var: 'x3', neg: false }],
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: false }, { var: 'x3', neg: true }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: false }, { var: 'x3', neg: true }],
+      [{ var: 'x1', neg: false }, { var: 'x2', neg: true }, { var: 'x3', neg: true }],
+      [{ var: 'x1', neg: true }, { var: 'x2', neg: true }, { var: 'x3', neg: true }],
+    ],
+    initialAssignment: { x1: false, x2: false, x3: false, x4: false },
+  },
+];
+
+// ============================================================================
+// DRAWING PRIMITIVES
+// ============================================================================
+
+const Draw = {
+  clear(ctx, width, height, color = CONFIG.colors.bg) {
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, width, height);
+  },
+
+  roundRect(ctx, x, y, w, h, r, options = {}) {
+    const { fill, stroke, lineWidth = 2 } = options;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+  },
+
+  circle(ctx, x, y, radius, options = {}) {
+    const { fill, stroke, lineWidth = 2 } = options;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.stroke();
+    }
+  },
+
+  text(ctx, text, x, y, options = {}) {
+    const { font = CONFIG.fonts.body, color = CONFIG.colors.text, align = 'center', baseline = 'middle' } = options;
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    ctx.fillText(text, x, y);
+    return ctx.measureText(text).width;
+  },
+
+  badge(ctx, text, x, y, options = {}) {
+    const { bgColor, textColor = CONFIG.colors.text, font = CONFIG.fonts.smallBold, padding = 20, height = 26 } = options;
+    ctx.font = font;
+    const width = ctx.measureText(text).width + padding * 2;
+    Draw.roundRect(ctx, x - width / 2, y - height / 2, width, height, height / 2, { fill: bgColor });
+    Draw.text(ctx, text, x, y, { font, color: textColor });
+    return width;
+  },
+
+  box(ctx, x, y, w, h, options = {}) {
+    const { fill = CONFIG.colors.bgLight, stroke, lineWidth = 2, radius = 8 } = options;
+    Draw.roundRect(ctx, x, y, w, h, radius, { fill, stroke, lineWidth });
+    return { x, y, w, h };
+  },
+
+  statusIndicator(ctx, x, y, satisfied, radius = 12) {
+    const color = satisfied ? CONFIG.colors.satisfied : CONFIG.colors.unsatisfied;
+    const symbol = satisfied ? '✓' : '✗';
+    Draw.circle(ctx, x, y, radius, { fill: color });
+    Draw.text(ctx, symbol, x, y, { font: CONFIG.fonts.bodyBold, color: '#fff' });
+  },
+};
+
+// ============================================================================
+// DATA HELPERS
+// ============================================================================
+
+const subscript = (num) => {
+  const subs = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉' };
+  return String(num).split('').map(d => subs[d] || d).join('');
+};
+
+const formatVarName = (varName) => {
+  const num = varName.replace('x', '');
+  return `x${subscript(num)}`;
+};
+
+const formatLiteral = (lit) => {
+  const varName = formatVarName(lit.var);
+  return lit.neg ? `¬${varName}` : varName;
+};
+
+// ============================================================================
+// SOLVER LOGIC
+// ============================================================================
+
+const Solver = {
+  evaluateLiteral(literal, assignment) {
+    const value = assignment[literal.var];
+    if (value === undefined) return undefined;
+    return literal.neg ? !value : value;
+  },
+
+  evaluateClause(clause, assignment) {
+    let hasUnassigned = false;
+    for (const lit of clause) {
+      const val = this.evaluateLiteral(lit, assignment);
+      if (val === true) return true;
+      if (val === undefined) hasUnassigned = true;
+    }
+    return hasUnassigned ? undefined : false;
+  },
+
+  evaluateFormula(clauses, assignment) {
+    let allSatisfied = true;
+    let hasConflict = false;
+    
+    for (const clause of clauses) {
+      const result = this.evaluateClause(clause, assignment);
+      if (result === false) hasConflict = true;
+      if (result !== true) allSatisfied = false;
+    }
+    
+    if (hasConflict) return 'conflict';
+    if (allSatisfied) return 'satisfied';
+    return 'undetermined';
+  },
+
+  getClauseStatus(clause, assignment) {
+    const result = this.evaluateClause(clause, assignment);
+    if (result === true) return 'satisfied';
+    if (result === false) return 'conflict';
+    return 'undetermined';
+  },
+};
+
+// ============================================================================
+// DPLL SOLVER
+// ============================================================================
+
+const DPLL = {
+  findUnitClause(clauses, assignment) {
+    for (let i = 0; i < clauses.length; i++) {
+      const clause = clauses[i];
+      let unassignedLit = null;
+      let unassignedCount = 0;
+      let hasTrueLit = false;
+      
+      for (const lit of clause) {
+        const val = Solver.evaluateLiteral(lit, assignment);
+        if (val === true) {
+          hasTrueLit = true;
+          break;
+        }
+        if (val === undefined) {
+          unassignedCount++;
+          unassignedLit = lit;
+        }
+      }
+      
+      if (!hasTrueLit && unassignedCount === 1) {
+        return { clauseIndex: i, literal: unassignedLit };
+      }
+    }
+    return null;
+  },
+
+  unitPropagateStep(clauses, assignment) {
+    const unit = this.findUnitClause(clauses, assignment);
+    if (!unit) return null;
+    
+    const newAssignment = { ...assignment };
+    newAssignment[unit.literal.var] = !unit.literal.neg;
+    
+    return {
+      assignment: newAssignment,
+      variable: unit.literal.var,
+      value: !unit.literal.neg,
+      reason: 'unit',
+      clauseIndex: unit.clauseIndex,
+    };
+  },
+
+  chooseVariable(clauses, assignment) {
+    const counts = {};
+    
+    for (const clause of clauses) {
+      if (Solver.evaluateClause(clause, assignment) === true) continue;
+      
+      for (const lit of clause) {
+        if (assignment[lit.var] === undefined) {
+          counts[lit.var] = (counts[lit.var] || 0) + 1;
+        }
+      }
+    }
+    
+    let bestVar = null;
+    let bestCount = -1;
+    for (const [v, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        bestCount = count;
+        bestVar = v;
+      }
+    }
+    
+    return bestVar;
+  },
+};
+
+// ============================================================================
+// DPLL STATE MANAGEMENT
+// ============================================================================
+
+function createInitialDPLLState(problem) {
+  const rootAssignment = {};
+  problem.variables.forEach(v => { rootAssignment[v] = undefined; });
+  
+  return {
+    nodes: [{
+      id: 0,
+      assignment: rootAssignment,
+      decision: null,
+      parentId: null,
+      children: [],
+      status: 'active',
+      depth: 0,
+    }],
+    currentNodeId: 0,
+    nextNodeId: 1,
+    history: [],
+    status: 'ready',
+    highlightClause: null,
+  };
+}
+
+function findBacktrackTarget(nodes, history) {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    const node = nodes.find(n => n.id === h.nodeId);
+    if (node && node.children.length === 1) {
+      return h;
+    }
+  }
+  return null;
+}
+
+function dpllStep(state, clauses, variables) {
+  if (state.status === 'satisfied' || state.status === 'unsatisfiable') {
+    return state;
+  }
+  
+  const currentNode = state.nodes.find(n => n.id === state.currentNodeId);
+  const assignment = currentNode.assignment;
+  
+  const formulaStatus = Solver.evaluateFormula(clauses, assignment);
+  
+  if (formulaStatus === 'satisfied') {
+    return {
+      ...state,
+      status: 'satisfied',
+      nodes: state.nodes.map(n => 
+        n.id === state.currentNodeId ? { ...n, status: 'satisfied' } : n
+      ),
+    };
+  }
+  
+  if (formulaStatus === 'conflict') {
+    const newNodes = state.nodes.map(n => 
+      n.id === state.currentNodeId ? { ...n, status: 'conflict' } : n
+    );
+    
+    const backtrackTarget = findBacktrackTarget(newNodes, state.history);
+    
+    if (!backtrackTarget) {
+      return { ...state, nodes: newNodes, status: 'unsatisfiable' };
+    }
+    
+    const parentNode = newNodes.find(n => n.id === backtrackTarget.nodeId);
+    const newAssignment = { ...parentNode.assignment };
+    newAssignment[backtrackTarget.variable] = !backtrackTarget.triedValue;
+    
+    const newNode = {
+      id: state.nextNodeId,
+      assignment: newAssignment,
+      decision: { 
+        variable: backtrackTarget.variable, 
+        value: !backtrackTarget.triedValue, 
+        type: 'decide',
+        backtrack: true,
+      },
+      parentId: backtrackTarget.nodeId,
+      children: [],
+      status: 'active',
+      depth: parentNode.depth + 1,
+    };
+    
+    const updatedNodes = newNodes.map(n => 
+      n.id === backtrackTarget.nodeId 
+        ? { ...n, children: [...n.children, state.nextNodeId] }
+        : n
+    );
+    
+    const newHistory = state.history.filter(h => 
+      !(h.nodeId === backtrackTarget.nodeId && h.variable === backtrackTarget.variable)
+    );
+    
+    return {
+      ...state,
+      nodes: [...updatedNodes, newNode],
+      currentNodeId: state.nextNodeId,
+      nextNodeId: state.nextNodeId + 1,
+      history: newHistory,
+      highlightClause: null,
+    };
+  }
+  
+  const unitStep = DPLL.unitPropagateStep(clauses, assignment);
+  
+  if (unitStep) {
+    const newAssignment = { ...assignment, [unitStep.variable]: unitStep.value };
+    const newNode = {
+      id: state.nextNodeId,
+      assignment: newAssignment,
+      decision: { 
+        variable: unitStep.variable, 
+        value: unitStep.value, 
+        type: 'propagate',
+        clauseIndex: unitStep.clauseIndex,
+      },
+      parentId: state.currentNodeId,
+      children: [],
+      status: 'active',
+      depth: currentNode.depth + 1,
+    };
+    
+    const newNodes = state.nodes.map(n => 
+      n.id === state.currentNodeId 
+        ? { ...n, children: [...n.children, state.nextNodeId], status: 'explored' }
+        : n
+    );
+    
+    return {
+      ...state,
+      nodes: [...newNodes, newNode],
+      currentNodeId: state.nextNodeId,
+      nextNodeId: state.nextNodeId + 1,
+      highlightClause: unitStep.clauseIndex,
+    };
+  }
+  
+  const varToDecide = DPLL.chooseVariable(clauses, assignment);
+  
+  if (!varToDecide) {
+    return { ...state, status: 'unsatisfiable' };
+  }
+  
+  const newAssignment = { ...assignment, [varToDecide]: true };
+  const newNode = {
+    id: state.nextNodeId,
+    assignment: newAssignment,
+    decision: { variable: varToDecide, value: true, type: 'decide' },
+    parentId: state.currentNodeId,
+    children: [],
+    status: 'active',
+    depth: currentNode.depth + 1,
+  };
+  
+  const newNodes = state.nodes.map(n => 
+    n.id === state.currentNodeId 
+      ? { ...n, children: [...n.children, state.nextNodeId], status: 'explored' }
+      : n
+  );
+  
+  return {
+    ...state,
+    nodes: [...newNodes, newNode],
+    currentNodeId: state.nextNodeId,
+    nextNodeId: state.nextNodeId + 1,
+    history: [...state.history, { nodeId: state.currentNodeId, variable: varToDecide, triedValue: true }],
+    highlightClause: null,
+  };
+}
+
+function dpllPropagateAll(state, clauses, variables) {
+  let current = state;
+  let iterations = 0;
+  const maxIterations = 100;
+  
+  while (iterations < maxIterations) {
+    current = dpllStep(current, clauses, variables);
+    
+    const currentNode = current.nodes.find(n => n.id === current.currentNodeId);
+    if (current.status === 'satisfied' || 
+        current.status === 'unsatisfiable' ||
+        (currentNode?.decision?.type === 'decide' && !currentNode?.decision?.backtrack)) {
+      break;
+    }
+    iterations++;
+  }
+  
+  return current;
+}
+
+function dpllRunToEnd(state, clauses, variables) {
+  let current = state;
+  let iterations = 0;
+  const maxIterations = 500;
+  
+  while (iterations < maxIterations && 
+         current.status !== 'satisfied' && 
+         current.status !== 'unsatisfiable') {
+    current = dpllStep(current, clauses, variables);
+    iterations++;
+  }
+  
+  return current;
+}
+
+// ============================================================================
+// UI COMPONENTS
+// ============================================================================
+
+const Components = {
+  variableToggle(ctx, varName, value, x, y, w = 60, h = 50) {
+    const bgColor = value ? CONFIG.colors.satisfiedBg : CONFIG.colors.unsatisfiedBg;
+    const compact = w < 55;
+    Draw.roundRect(ctx, x, y, w, h, 8, { fill: bgColor });
+    Draw.text(ctx, formatVarName(varName), x + w / 2, y + (compact ? 16 : 18), { 
+      font: compact ? 'bold 14px system-ui' : CONFIG.fonts.variable 
+    });
+    Draw.text(ctx, value ? 'T' : 'F', x + w / 2, y + (compact ? 34 : 38), { 
+      font: compact ? 'bold 11px system-ui' : CONFIG.fonts.small,
+      color: value ? CONFIG.colors.satisfiedLight : CONFIG.colors.unsatisfiedLight
+    });
+    return { x, y, w, h, varName };
+  },
+
+  variableRow(ctx, variables, y, canvasWidth) {
+    const varNames = Object.keys(variables);
+    const maxWidth = canvasWidth - 60;
+    const gap = 6;
+    
+    const varWidth = Math.min(65, Math.max(45, (maxWidth - (varNames.length - 1) * gap) / varNames.length));
+    const totalWidth = varNames.length * varWidth + (varNames.length - 1) * gap;
+    const startX = (canvasWidth - totalWidth) / 2;
+    
+    const hitboxes = [];
+    varNames.forEach((v, i) => {
+      const x = startX + i * (varWidth + gap);
+      const hitbox = this.variableToggle(ctx, v, variables[v], x, y, varWidth);
+      hitboxes.push(hitbox);
+    });
+    return hitboxes;
+  },
+
+  clauseRow(ctx, clause, index, assignment, x, y, w, h = 50) {
+    const status = Solver.getClauseStatus(clause, assignment);
+    const statusColors = {
+      satisfied: { bg: CONFIG.colors.bgLight, border: CONFIG.colors.satisfied },
+      conflict: { bg: CONFIG.colors.bgLight, border: CONFIG.colors.unsatisfied },
+      undetermined: { bg: CONFIG.colors.bgLight, border: null },
+    };
+    const colors = statusColors[status];
+    
+    const compact = h < 35;
+    const fontSize = compact ? '13px' : '15px';
+    const fontSizeBold = compact ? 'bold 13px' : 'bold 15px';
+    const indicatorRadius = compact ? 9 : 12;
+    
+    Draw.roundRect(ctx, x, y, w, h, 6, { 
+      fill: colors.bg, 
+      stroke: colors.border,
+      lineWidth: 2 
+    });
+    
+    const indicatorX = x + 18 + indicatorRadius;
+    if (status !== 'undetermined') {
+      Draw.statusIndicator(ctx, indicatorX, y + h / 2, status === 'satisfied', indicatorRadius);
+    } else {
+      Draw.circle(ctx, indicatorX, y + h / 2, indicatorRadius, { fill: CONFIG.colors.bgLighter });
+      Draw.text(ctx, '?', indicatorX, y + h / 2, { font: CONFIG.fonts.bodyBold, color: CONFIG.colors.textMuted });
+    }
+    
+    let textX = indicatorX + indicatorRadius + 12;
+    const textY = y + h / 2;
+    
+    Draw.text(ctx, '(', textX, textY, { font: `${fontSize} system-ui`, color: CONFIG.colors.textMuted, align: 'left' });
+    textX += 8;
+    
+    clause.forEach((lit, j) => {
+      const litValue = Solver.evaluateLiteral(lit, assignment);
+      const litText = formatLiteral(lit);
+      const litColor = litValue === true ? CONFIG.colors.satisfiedLight 
+                     : litValue === false ? CONFIG.colors.unsatisfiedLight 
+                     : CONFIG.colors.textMuted;
+      const litFont = litValue === true ? `${fontSizeBold} system-ui` : `${fontSize} system-ui`;
+      
+      const litWidth = Draw.text(ctx, litText, textX, textY, { font: litFont, color: litColor, align: 'left' });
+      textX += litWidth;
+      
+      if (j < clause.length - 1) {
+        const orText = compact ? '∨' : ' ∨ ';
+        Draw.text(ctx, orText, textX, textY, { font: `${fontSize} system-ui`, color: CONFIG.colors.or, align: 'left' });
+        textX += compact ? 12 : 24;
+      }
+    });
+    
+    Draw.text(ctx, ')', textX, textY, { font: `${fontSize} system-ui`, color: CONFIG.colors.textMuted, align: 'left' });
+    
+    const statusLabels = { satisfied: 'SAT', conflict: 'UNSAT', undetermined: '' };
+    const labelColor = status === 'satisfied' ? CONFIG.colors.satisfiedLight 
+                     : status === 'conflict' ? CONFIG.colors.unsatisfiedLight 
+                     : CONFIG.colors.textDim;
+    Draw.text(ctx, statusLabels[status], x + w - 12, y + h / 2, { 
+      font: CONFIG.fonts.small, 
+      color: labelColor, 
+      align: 'right' 
+    });
+    
+    return { x, y, w, h, index, status };
+  },
+
+  clauseList(ctx, clauses, assignment, x, y, w, rowHeight = 44, gap = 6) {
+    const hitboxes = [];
+    clauses.forEach((clause, i) => {
+      const rowY = y + i * (rowHeight + gap);
+      const hitbox = this.clauseRow(ctx, clause, i, assignment, x, rowY, w, rowHeight);
+      hitboxes.push(hitbox);
+    });
+    return hitboxes;
+  },
+
+  formulaResult(ctx, status, x, y, w, h = 60) {
+    const issat = status === 'satisfied';
+    const bgColor = issat ? CONFIG.colors.satisfiedBg : CONFIG.colors.unsatisfiedBg;
+    const borderColor = issat ? CONFIG.colors.satisfied : CONFIG.colors.unsatisfied;
+    
+    Draw.roundRect(ctx, x, y, w, h, 10, { fill: bgColor, stroke: borderColor, lineWidth: 3 });
+    
+    const messages = {
+      satisfied: { icon: '🎉', title: 'Formula SATISFIED!', sub: 'All clauses are true — solution found!' },
+      conflict: { icon: '❌', title: 'CONFLICT', sub: 'One or more clauses are false' },
+      undetermined: { icon: '🔍', title: 'Keep trying...', sub: 'Not all clauses satisfied yet' },
+    };
+    const msg = messages[status];
+    
+    const compact = h < 55;
+    if (compact) {
+      Draw.text(ctx, `${msg.icon} ${msg.title}`, x + w / 2, y + h / 2 - 6, { font: CONFIG.fonts.bodyBold });
+      Draw.text(ctx, msg.sub, x + w / 2, y + h / 2 + 10, { 
+        font: CONFIG.fonts.small, 
+        color: issat ? CONFIG.colors.satisfiedPale : CONFIG.colors.unsatisfiedPale 
+      });
+    } else {
+      Draw.text(ctx, `${msg.icon} ${msg.title}`, x + w / 2, y + 22, { font: CONFIG.fonts.subtitle });
+      Draw.text(ctx, msg.sub, x + w / 2, y + 45, { 
+        font: CONFIG.fonts.small, 
+        color: issat ? CONFIG.colors.satisfiedPale : CONFIG.colors.unsatisfiedPale 
+      });
+    }
+  },
+
+  sectionTitle(ctx, text, y, canvasWidth) {
+    Draw.text(ctx, text, canvasWidth / 2, y, { font: CONFIG.fonts.title });
+  },
+
+  subtitle(ctx, text, y, canvasWidth) {
+    Draw.text(ctx, text, canvasWidth / 2, y, { font: CONFIG.fonts.body, color: CONFIG.colors.textMuted });
+  },
+
+  treeNode(ctx, node, x, y, nodeWidth = 90, nodeHeight = 40) {
+    const { colors, fonts } = CONFIG;
+    
+    const statusColors = {
+      active: { bg: colors.accent[0], border: colors.accent[0], text: '#fff' },
+      explored: { bg: colors.bgLight, border: colors.textDim, text: colors.text },
+      satisfied: { bg: colors.satisfiedBg, border: colors.satisfied, text: colors.satisfiedLight },
+      conflict: { bg: colors.unsatisfiedBg, border: colors.unsatisfied, text: colors.unsatisfiedLight },
+    };
+    
+    const style = statusColors[node.status] || statusColors.explored;
+    
+    Draw.roundRect(ctx, x, y, nodeWidth, nodeHeight, 6, { 
+      fill: style.bg, 
+      stroke: style.border,
+      lineWidth: node.status === 'active' ? 3 : 2,
+    });
+    
+    if (node.decision) {
+      const varName = formatVarName(node.decision.variable);
+      const valText = node.decision.value ? 'T' : 'F';
+      
+      Draw.text(ctx, `${varName}=${valText}`, x + nodeWidth / 2, y + 14, { 
+        font: fonts.smallBold, 
+        color: style.text 
+      });
+      Draw.text(ctx, node.decision.type === 'propagate' ? 'propagate' : 'decide', 
+        x + nodeWidth / 2, y + 28, { 
+          font: '10px system-ui', 
+          color: node.status === 'active' ? 'rgba(255,255,255,0.7)' : colors.textDim 
+        });
+    } else {
+      Draw.text(ctx, 'start', x + nodeWidth / 2, y + nodeHeight / 2, { 
+        font: fonts.smallBold, 
+        color: style.text 
+      });
+    }
+    
+    if (node.status === 'satisfied') {
+      Draw.text(ctx, '✓', x + nodeWidth - 12, y + 10, { font: fonts.smallBold, color: colors.satisfied });
+    } else if (node.status === 'conflict') {
+      Draw.text(ctx, '✗', x + nodeWidth - 12, y + 10, { font: fonts.smallBold, color: colors.unsatisfied });
+    }
+    
+    return { x, y, w: nodeWidth, h: nodeHeight, nodeId: node.id };
+  },
+
+  treeEdge(ctx, fromX, fromY, toX, toY, isBacktrack = false) {
+    ctx.beginPath();
+    ctx.strokeStyle = isBacktrack ? CONFIG.colors.warning : CONFIG.colors.textDim;
+    ctx.lineWidth = isBacktrack ? 2 : 1.5;
+    
+    if (isBacktrack) {
+      ctx.setLineDash([4, 4]);
+    }
+    
+    const midY = (fromY + toY) / 2;
+    ctx.moveTo(fromX, fromY);
+    ctx.bezierCurveTo(fromX, midY, toX, midY, toX, toY);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+  },
+
+  dpllTree(ctx, nodes, x, y, maxWidth, maxHeight) {
+    const nodeWidth = 85;
+    const nodeHeight = 38;
+    const levelGap = 55;
+    const siblingGap = 10;
+    
+    const positions = new Map();
+    const levelNodes = new Map();
+    
+    for (const node of nodes) {
+      const level = node.depth;
+      if (!levelNodes.has(level)) levelNodes.set(level, []);
+      levelNodes.get(level).push(node.id);
+    }
+    
+    const maxDepth = Math.max(...nodes.map(n => n.depth));
+    
+    for (let depth = 0; depth <= maxDepth; depth++) {
+      const nodesAtLevel = levelNodes.get(depth) || [];
+      const levelWidth = nodesAtLevel.length * (nodeWidth + siblingGap) - siblingGap;
+      let startX = x + (maxWidth - levelWidth) / 2;
+      
+      if (depth > 0) {
+        nodesAtLevel.forEach((nid, i) => {
+          const node = nodes.find(n => n.id === nid);
+          const parentPos = positions.get(node.parentId);
+          
+          if (parentPos) {
+            const siblings = nodes.filter(n => n.parentId === node.parentId);
+            const siblingIndex = siblings.findIndex(s => s.id === nid);
+            const siblingCount = siblings.length;
+            const offset = (siblingIndex - (siblingCount - 1) / 2) * (nodeWidth + siblingGap);
+            
+            positions.set(nid, {
+              x: Math.max(x, Math.min(x + maxWidth - nodeWidth, parentPos.x + offset)),
+              y: y + depth * levelGap,
+            });
+          } else {
+            positions.set(nid, { x: startX + i * (nodeWidth + siblingGap), y: y + depth * levelGap });
+          }
+        });
+      } else {
+        nodesAtLevel.forEach((nid, i) => {
+          positions.set(nid, { x: startX + i * (nodeWidth + siblingGap), y: y });
+        });
+      }
+    }
+    
+    for (const node of nodes) {
+      if (node.parentId !== null) {
+        const parentPos = positions.get(node.parentId);
+        const nodePos = positions.get(node.id);
+        if (parentPos && nodePos) {
+          const isBacktrack = node.decision?.backtrack;
+          this.treeEdge(
+            ctx, 
+            parentPos.x + nodeWidth / 2, parentPos.y + nodeHeight,
+            nodePos.x + nodeWidth / 2, nodePos.y,
+            isBacktrack
+          );
+        }
+      }
+    }
+    
+    const hitboxes = [];
+    for (const node of nodes) {
+      const pos = positions.get(node.id);
+      if (pos) {
+        const hitbox = this.treeNode(ctx, node, pos.x, pos.y, nodeWidth, nodeHeight);
+        hitboxes.push(hitbox);
+      }
+    }
+    
+    return hitboxes;
+  },
+};
+
+// ============================================================================
+// TAB RENDERERS
+// ============================================================================
+
+const TabRenderers = {
+  intro(ctx, width, height, state) {
+    const { colors, fonts, spacing } = CONFIG;
+    const margin = spacing.margin;
+    
+    Components.sectionTitle(ctx, 'What is 3-SAT?', 40, width);
+    Components.subtitle(ctx, 'The 3-Satisfiability Problem', 70, width);
+    
+    Draw.text(ctx, '(x₁ ∨ ¬x₂ ∨ x₃) ∧ (¬x₁ ∨ x₂ ∨ x₄)', width / 2, 110, { 
+      font: 'italic 18px system-ui', 
+      color: colors.accent[0] 
+    });
+    
+    const concepts = [
+      { title: 'Boolean Variables', desc: 'Variables that can be TRUE or FALSE' },
+      { title: 'Literals', desc: 'A variable (x) or its negation (¬x)' },
+      { title: 'Clauses', desc: 'OR of exactly 3 literals' },
+      { title: 'Formula', desc: 'AND of all clauses together' },
+    ];
+    
+    const boxHeight = 55;
+    const boxGap = 10;
+    let boxY = 145;
+    
+    concepts.forEach((concept, i) => {
+      Draw.box(ctx, margin, boxY, width - margin * 2, boxHeight, { fill: colors.bgLight });
+      
+      Draw.circle(ctx, margin + 30, boxY + boxHeight / 2, 18, { fill: colors.accent[i] });
+      Draw.text(ctx, (i + 1).toString(), margin + 30, boxY + boxHeight / 2, { font: fonts.bodyBold });
+      
+      Draw.text(ctx, concept.title, margin + 60, boxY + 20, { font: fonts.bodyBold, align: 'left' });
+      Draw.text(ctx, concept.desc, margin + 60, boxY + 38, { font: fonts.body, color: colors.textMuted, align: 'left' });
+      
+      boxY += boxHeight + boxGap;
+    });
+    
+    Draw.box(ctx, margin, boxY + 20, width - margin * 2, 50, { fill: '#164e63' });
+    Draw.text(ctx, '🎯 Goal: Find TRUE/FALSE values that make the entire formula TRUE', 
+      width / 2, boxY + 45, { font: fonts.bodyBold, color: '#22d3ee' });
+  },
+
+  structure(ctx, width, height, state) {
+    const { colors, fonts, spacing } = CONFIG;
+    const margin = spacing.margin;
+    
+    Components.sectionTitle(ctx, 'Anatomy of a 3-SAT Formula', 35, width);
+    Components.subtitle(ctx, 'Example Formula:', 65, width);
+    
+    const clauseY = 100;
+    
+    const clauseBoxes = [
+      { x: 40, w: 170, color: colors.accent[0], text: '(x₁ ∨ ¬x₂ ∨ x₃)', label: 'Clause 1' },
+      { x: 270, w: 180, color: colors.accent[1], text: '(¬x₁ ∨ x₂ ∨ x₄)', label: 'Clause 2' },
+    ];
+    
+    clauseBoxes.forEach(box => {
+      Draw.roundRect(ctx, box.x, clauseY - 20, box.w, 40, 6, { 
+        fill: `${box.color}22`, 
+        stroke: box.color 
+      });
+      Draw.text(ctx, box.text, box.x + box.w / 2, clauseY, { font: fonts.symbol, color: box.color });
+      Draw.text(ctx, box.label, box.x + box.w / 2, clauseY + 35, { font: fonts.small, color: box.color });
+    });
+    
+    Draw.text(ctx, '∧', 230, clauseY, { font: fonts.symbol });
+    Draw.text(ctx, 'AND', 230, clauseY + 35, { font: fonts.small, color: colors.textMuted });
+    
+    const breakdownY = 175;
+    Draw.text(ctx, 'Breaking down Clause 1:', margin, breakdownY, { font: fonts.bodyBold, align: 'left' });
+    
+    const literals = [
+      { text: 'x₁', desc: 'Positive literal', color: colors.positive },
+      { text: '¬x₂', desc: 'Negated literal', color: colors.negative },
+      { text: 'x₃', desc: 'Positive literal', color: colors.positive },
+    ];
+    
+    const litBoxWidth = 110;
+    const litStartX = (width - literals.length * litBoxWidth - 60) / 2;
+    
+    literals.forEach((lit, i) => {
+      const x = litStartX + i * (litBoxWidth + 30);
+      const y = breakdownY + 25;
+      
+      Draw.box(ctx, x, y, litBoxWidth, 65);
+      Draw.text(ctx, lit.text, x + litBoxWidth / 2, y + 25, { font: 'bold 22px system-ui', color: lit.color });
+      Draw.text(ctx, lit.desc, x + litBoxWidth / 2, y + 50, { font: fonts.small, color: colors.textMuted });
+      
+      if (i < literals.length - 1) {
+        Draw.text(ctx, '∨', x + litBoxWidth + 15, y + 32, { font: fonts.symbol, color: colors.or });
+      }
+    });
+    
+    Draw.text(ctx, '∨ = OR (at least one must be true)', width / 2, breakdownY + 110, { 
+      font: fonts.small, color: colors.or 
+    });
+    
+    const insightY = 340;
+    Draw.box(ctx, margin, insightY, width - margin * 2, 100, { fill: '#1e3a5f' });
+    Draw.text(ctx, '💡 Key Insight', width / 2, insightY + 22, { font: fonts.bodyBold, color: colors.highlight });
+    
+    const insights = [
+      'Each clause needs at least ONE true literal',
+      'The formula needs ALL clauses to be true',
+      'This creates a puzzle: satisfy all constraints simultaneously!'
+    ];
+    insights.forEach((text, i) => {
+      Draw.text(ctx, text, width / 2, insightY + 45 + i * 18, { font: fonts.small, color: colors.textMuted });
+    });
+    
+    Draw.box(ctx, margin, 460, width - margin * 2, 55);
+    Draw.text(ctx, 'Why "3"-SAT?', width / 2, 480, { font: fonts.bodyBold });
+    Draw.text(ctx, 'Every clause has exactly 3 literals — no more, no less', width / 2, 500, { 
+      font: fonts.small, color: colors.textMuted 
+    });
+  },
+
+  interactive(ctx, width, height, state) {
+    const { variables, clauses, problemName } = state;
+    const { colors, fonts, spacing } = CONFIG;
+    const margin = spacing.margin;
+    
+    Components.sectionTitle(ctx, 'Try It Yourself!', 28, width);
+    Draw.badge(ctx, problemName, width / 2, 52, { 
+      bgColor: colors.accent[0], 
+      textColor: colors.text,
+      font: fonts.smallBold 
+    });
+    Components.subtitle(ctx, 'Click variables to toggle • Find a satisfying assignment', 75, width);
+    
+    const varHitboxes = Components.variableRow(ctx, variables, 95, width);
+    
+    Draw.text(ctx, `Clauses (${clauses.length}):`, margin, 160, { font: fonts.bodyBold, align: 'left' });
+    
+    const availableHeight = height - 250;
+    const maxRowHeight = 42;
+    const minRowHeight = 28;
+    const gap = 4;
+    const rowHeight = Math.max(minRowHeight, Math.min(maxRowHeight, (availableHeight - clauses.length * gap) / clauses.length));
+    
+    const clauseHitboxes = Components.clauseList(
+      ctx, clauses, variables, 
+      margin, 178, width - margin * 2,
+      rowHeight, gap
+    );
+    
+    const formulaStatus = Solver.evaluateFormula(clauses, variables);
+    const resultY = height - 75;
+    Components.formulaResult(ctx, formulaStatus, margin, resultY, width - margin * 2, 60);
+    
+    return { varHitboxes, clauseHitboxes };
+  },
+
+  dpll(ctx, width, height, state) {
+    const { clauses, dpllState, problemName } = state;
+    const { colors, fonts, spacing } = CONFIG;
+    const margin = spacing.margin;
+    
+    Draw.text(ctx, 'DPLL Algorithm', width / 2, 28, { font: fonts.title });
+    Draw.badge(ctx, problemName, width / 2, 52, { 
+      bgColor: colors.accent[1], 
+      textColor: colors.text,
+      font: fonts.smallBold 
+    });
+    
+    const statusMessages = {
+      ready: { text: 'Ready to start', color: colors.textMuted, bg: colors.bgLight },
+      running: { text: 'Searching...', color: colors.accent[0], bg: colors.bgLight },
+      satisfied: { text: '✓ SATISFIABLE — Solution found!', color: colors.satisfied, bg: colors.satisfiedBg },
+      unsatisfiable: { text: '✗ UNSATISFIABLE — No solution exists', color: colors.unsatisfied, bg: colors.unsatisfiedBg },
+    };
+    const statusInfo = statusMessages[dpllState.status];
+    
+    Draw.roundRect(ctx, margin, 70, width - margin * 2, 28, 6, { fill: statusInfo.bg });
+    Draw.text(ctx, statusInfo.text, width / 2, 84, { font: fonts.bodyBold, color: statusInfo.color });
+    
+    const clauseAreaWidth = 250;
+    const treeAreaWidth = width - clauseAreaWidth - margin * 3;
+    const contentY = 110;
+    
+    Draw.text(ctx, `Clauses (${clauses.length})`, margin + clauseAreaWidth / 2, contentY, { font: fonts.bodyBold });
+    
+    const currentNode = dpllState.nodes.find(n => n.id === dpllState.currentNodeId);
+    const currentAssignment = currentNode?.assignment || {};
+    
+    const clauseRowHeight = Math.min(32, (height - contentY - 100) / clauses.length);
+    clauses.forEach((clause, i) => {
+      const y = contentY + 20 + i * (clauseRowHeight + 3);
+      const status = Solver.getClauseStatus(clause, currentAssignment);
+      const isHighlighted = dpllState.highlightClause === i;
+      
+      const bgColor = isHighlighted ? colors.accent[0] + '33' : colors.bgLight;
+      const borderColor = status === 'satisfied' ? colors.satisfied 
+                        : status === 'conflict' ? colors.unsatisfied 
+                        : isHighlighted ? colors.accent[0] : null;
+      
+      Draw.roundRect(ctx, margin, y, clauseAreaWidth, clauseRowHeight, 4, { 
+        fill: bgColor, 
+        stroke: borderColor,
+        lineWidth: isHighlighted ? 2 : 1.5,
+      });
+      
+      let textX = margin + 8;
+      const textY = y + clauseRowHeight / 2;
+      
+      if (status === 'satisfied') {
+        Draw.text(ctx, '✓', textX + 4, textY, { font: '11px system-ui', color: colors.satisfied, align: 'left' });
+      } else if (status === 'conflict') {
+        Draw.text(ctx, '✗', textX + 4, textY, { font: '11px system-ui', color: colors.unsatisfied, align: 'left' });
+      }
+      textX += 18;
+      
+      Draw.text(ctx, '(', textX, textY, { font: '12px system-ui', color: colors.textMuted, align: 'left' });
+      textX += 6;
+      
+      clause.forEach((lit, j) => {
+        const litValue = Solver.evaluateLiteral(lit, currentAssignment);
+        const litText = formatLiteral(lit);
+        const litColor = litValue === true ? colors.satisfiedLight 
+                       : litValue === false ? colors.unsatisfiedLight 
+                       : colors.textMuted;
+        
+        const litWidth = Draw.text(ctx, litText, textX, textY, { 
+          font: litValue === true ? 'bold 11px system-ui' : '11px system-ui', 
+          color: litColor, 
+          align: 'left' 
+        });
+        textX += litWidth;
+        
+        if (j < clause.length - 1) {
+          Draw.text(ctx, '∨', textX + 3, textY, { font: '11px system-ui', color: colors.or, align: 'left' });
+          textX += 14;
+        }
+      });
+      
+      Draw.text(ctx, ')', textX, textY, { font: '12px system-ui', color: colors.textMuted, align: 'left' });
+    });
+    
+    const assignY = contentY + 20 + clauses.length * (clauseRowHeight + 3) + 15;
+    Draw.text(ctx, 'Current Assignment:', margin, assignY, { font: fonts.smallBold, align: 'left' });
+    
+    let assignX = margin;
+    const assignTextY = assignY + 18;
+    Object.entries(currentAssignment).forEach(([v, val]) => {
+      const varName = formatVarName(v);
+      const valText = val === undefined ? '?' : (val ? 'T' : 'F');
+      const color = val === undefined ? colors.textDim : (val ? colors.satisfiedLight : colors.unsatisfiedLight);
+      
+      const text = `${varName}=${valText}`;
+      const w = Draw.text(ctx, text, assignX, assignTextY, { font: fonts.small, color, align: 'left' });
+      assignX += w + 12;
+    });
+    
+    const treeX = margin + clauseAreaWidth + margin;
+    Draw.text(ctx, 'Decision Tree', treeX + treeAreaWidth / 2, contentY, { font: fonts.bodyBold });
+    
+    Draw.roundRect(ctx, treeX, contentY + 15, treeAreaWidth, height - contentY - 50, 8, { fill: colors.bgLight });
+    
+    Components.dpllTree(ctx, dpllState.nodes, treeX + 10, contentY + 30, treeAreaWidth - 20, height - contentY - 80);
+    
+    const legendY = height - 28;
+    const legendItems = [
+      { label: 'Active', color: colors.accent[0], type: 'circle' },
+      { label: 'Explored', color: colors.textDim, type: 'circle' },
+      { label: 'Satisfied', color: colors.satisfied, type: 'circle' },
+      { label: 'Conflict', color: colors.unsatisfied, type: 'circle' },
+      { label: 'Backtrack', color: colors.warning, type: 'dashed' },
+    ];
+    
+    let legendX = margin;
+    legendItems.forEach(item => {
+      if (item.type === 'circle') {
+        Draw.circle(ctx, legendX, legendY, 5, { fill: item.color });
+      } else if (item.type === 'dashed') {
+        ctx.beginPath();
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.moveTo(legendX - 8, legendY);
+        ctx.lineTo(legendX + 8, legendY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const w = Draw.text(ctx, item.label, legendX + 12, legendY, { font: '10px system-ui', color: colors.textMuted, align: 'left' });
+      legendX += w + 28;
+    });
+    
+    return {};
+  },
+
+  complexity(ctx, width, height, state) {
+    const { colors, fonts, spacing } = CONFIG;
+    const margin = spacing.margin;
+    
+    Components.sectionTitle(ctx, 'Why Does 3-SAT Matter?', 35, width);
+    
+    Draw.badge(ctx, 'NP-Complete Problem', width / 2, 65, { 
+      bgColor: '#7c2d12', 
+      textColor: colors.warning,
+      font: fonts.bodyBold 
+    });
+    
+    const vizY = 95;
+    Draw.box(ctx, margin, vizY, width - margin * 2, 115);
+    Draw.text(ctx, 'Exponential Growth of Possibilities', width / 2, vizY + 22, { font: fonts.bodyBold });
+    
+    const barData = [
+      { n: 4, label: '2²' }, { n: 8, label: '2³' }, { n: 16, label: '2⁴' }, 
+      { n: 32, label: '2⁵' }, { n: 64, label: '2⁶' }
+    ];
+    const barWidth = 45;
+    const barGap = 15;
+    const maxBarHeight = 70;
+    const chartX = (width - (barData.length * (barWidth + barGap) - barGap)) / 2;
+    
+    barData.forEach((bar, i) => {
+      const x = chartX + i * (barWidth + barGap);
+      const barHeight = (Math.log2(bar.n) / 6) * maxBarHeight;
+      const barY = vizY + 90 - barHeight;
+      
+      Draw.roundRect(ctx, x, barY, barWidth, barHeight, [4, 4, 0, 0], { 
+        fill: `hsl(${200 + i * 15}, 70%, ${55 - i * 5}%)` 
+      });
+      Draw.text(ctx, `${bar.label}=${bar.n}`, x + barWidth / 2, vizY + 105, { font: '10px system-ui', color: colors.textMuted });
+    });
+    
+    Draw.text(ctx, '# of variables → exponentially more combinations', width / 2, vizY + 125, { 
+      font: fonts.small, color: colors.textDim 
+    });
+    
+    const histY = 230;
+    Draw.box(ctx, margin, histY, width - margin * 2, 80, { fill: '#172554' });
+    Draw.text(ctx, '📜 Historical Significance', width / 2, histY + 22, { font: fonts.bodyBold, color: colors.highlight });
+    Draw.text(ctx, 'First problem proven NP-Complete (Cook, 1971)', width / 2, histY + 45, { font: fonts.small, color: colors.textMuted });
+    Draw.text(ctx, 'Foundation of computational complexity theory', width / 2, histY + 63, { font: fonts.small, color: colors.textMuted });
+    
+    const pnpY = 330;
+    Draw.box(ctx, margin, pnpY, width - margin * 2, 95);
+    Draw.text(ctx, 'The Million Dollar Question: P = NP?', width / 2, pnpY + 22, { font: fonts.bodyBold });
+    
+    const pnpLines = [
+      'If someone finds a fast algorithm for 3-SAT...',
+      '...it would solve thousands of other hard problems!',
+      '($1,000,000 prize from Clay Mathematics Institute)'
+    ];
+    pnpLines.forEach((line, i) => {
+      Draw.text(ctx, line, width / 2, pnpY + 45 + i * 16, { font: fonts.small, color: colors.textMuted });
+    });
+    
+    const appY = 445;
+    Draw.text(ctx, 'Real-World Applications', width / 2, appY, { font: fonts.bodyBold });
+    
+    const apps = [
+      { name: 'Circuit Design', color: colors.accent[0] },
+      { name: 'AI Planning', color: colors.accent[1] },
+      { name: 'Cryptography', color: colors.accent[2] },
+      { name: 'Scheduling', color: colors.accent[3] },
+    ];
+    
+    const appCols = 2;
+    const appColWidth = (width - margin * 2) / appCols;
+    
+    apps.forEach((app, i) => {
+      const col = i % appCols;
+      const row = Math.floor(i / appCols);
+      const x = margin + col * appColWidth + 15;
+      const y = appY + 25 + row * 30;
+      
+      Draw.circle(ctx, x, y, 8, { fill: app.color });
+      Draw.text(ctx, app.name, x + 18, y, { font: fonts.small, color: colors.text, align: 'left' });
+    });
+  },
+};
+
+// ============================================================================
+// APPLICATION STATE
+// ============================================================================
+
+const appState = {
+  activeTab: 'intro',
+  difficulty: 0,
+  variables: { ...PROBLEMS[0].initialAssignment },
+  dpllState: createInitialDPLLState(PROBLEMS[0]),
+  hitboxes: { varHitboxes: [], clauseHitboxes: [] },
+};
+
+// ============================================================================
+// RENDER FUNCTION
+// ============================================================================
+
+function render() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const { width, height } = CONFIG.canvas;
+  
+  Draw.clear(ctx, width, height);
+  
+  const currentProblem = PROBLEMS[appState.difficulty];
+  const state = {
+    variables: appState.variables,
+    clauses: currentProblem.clauses,
+    problemName: currentProblem.name,
+    problemDescription: currentProblem.description,
+    dpllState: appState.dpllState,
+  };
+  
+  const renderer = TabRenderers[appState.activeTab];
+  if (renderer) {
+    const result = renderer(ctx, width, height, state);
+    if (result) {
+      appState.hitboxes = result;
+    }
+  }
+  
+  updateUI();
+}
+
+function updateUI() {
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === appState.activeTab);
+  });
+  
+  // Update slider visibility
+  const sliderContainer = document.getElementById('slider-container');
+  const showSlider = appState.activeTab === 'interactive' || appState.activeTab === 'dpll';
+  sliderContainer.classList.toggle('visible', showSlider);
+  
+  // Update slider values
+  const currentProblem = PROBLEMS[appState.difficulty];
+  document.getElementById('difficulty-name').textContent = currentProblem.name;
+  document.getElementById('difficulty-slider').value = appState.difficulty;
+  document.getElementById('difficulty-desc').textContent = currentProblem.description;
+  
+  // Update slider labels
+  const labelsContainer = document.getElementById('slider-labels');
+  labelsContainer.innerHTML = PROBLEMS.map((p, i) => 
+    `<span class="${i === appState.difficulty ? 'active' : ''}">${p.name}</span>`
+  ).join('');
+  
+  // Update DPLL controls visibility
+  const dpllControls = document.getElementById('dpll-controls');
+  dpllControls.classList.toggle('visible', appState.activeTab === 'dpll');
+  
+  // Update DPLL button states
+  const isTerminal = appState.dpllState.status === 'satisfied' || appState.dpllState.status === 'unsatisfiable';
+  document.getElementById('btn-step').disabled = isTerminal;
+  document.getElementById('btn-propagate').disabled = isTerminal;
+  document.getElementById('btn-run').disabled = isTerminal;
+  
+  // Update help text
+  const helpText = document.getElementById('help-text');
+  if (appState.activeTab === 'interactive') {
+    helpText.innerHTML = '<p>Click the variable boxes to toggle TRUE/FALSE</p>';
+  } else if (appState.activeTab === 'dpll') {
+    helpText.innerHTML = `
+      <p><strong>Step:</strong> One propagation or decision</p>
+      <p><strong>Propagate All:</strong> All unit propagations until a decision is needed</p>
+      <p><strong>Run to End:</strong> Complete the search</p>
+    `;
+  } else {
+    helpText.innerHTML = '';
+  }
+}
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+
+function handleTabClick(tabId) {
+  appState.activeTab = tabId;
+  render();
+}
+
+function handleDifficultyChange(value) {
+  appState.difficulty = parseInt(value);
+  appState.variables = { ...PROBLEMS[appState.difficulty].initialAssignment };
+  appState.dpllState = createInitialDPLLState(PROBLEMS[appState.difficulty]);
+  render();
+}
+
+function handleCanvasClick(e) {
+  if (appState.activeTab !== 'interactive') return;
+  
+  const canvas = document.getElementById('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (CONFIG.canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (CONFIG.canvas.height / rect.height);
+  
+  appState.hitboxes.varHitboxes?.forEach(hb => {
+    if (x >= hb.x && x <= hb.x + hb.w && y >= hb.y && y <= hb.y + hb.h) {
+      appState.variables[hb.varName] = !appState.variables[hb.varName];
+      render();
+    }
+  });
+}
+
+function handleDpllStep() {
+  const problem = PROBLEMS[appState.difficulty];
+  appState.dpllState = dpllStep(appState.dpllState, problem.clauses, problem.variables);
+  render();
+}
+
+function handleDpllPropagateAll() {
+  const problem = PROBLEMS[appState.difficulty];
+  appState.dpllState = dpllPropagateAll(appState.dpllState, problem.clauses, problem.variables);
+  render();
+}
+
+function handleDpllRunToEnd() {
+  const problem = PROBLEMS[appState.difficulty];
+  appState.dpllState = dpllRunToEnd(appState.dpllState, problem.clauses, problem.variables);
+  render();
+}
+
+function handleDpllReset() {
+  appState.dpllState = createInitialDPLLState(PROBLEMS[appState.difficulty]);
+  render();
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+function init() {
+  // Create tab buttons
+  const tabs = [
+    { id: 'intro', label: 'Introduction' },
+    { id: 'structure', label: 'Structure' },
+    { id: 'interactive', label: 'Try It!' },
+    { id: 'dpll', label: 'DPLL' },
+    { id: 'complexity', label: 'Why It Matters' },
+  ];
+  
+  const tabsContainer = document.getElementById('tabs');
+  tabs.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.dataset.tab = tab.id;
+    btn.textContent = tab.label;
+    btn.addEventListener('click', () => handleTabClick(tab.id));
+    tabsContainer.appendChild(btn);
+  });
+  
+  // Event listeners
+  document.getElementById('difficulty-slider').addEventListener('input', (e) => handleDifficultyChange(e.target.value));
+  document.getElementById('canvas').addEventListener('click', handleCanvasClick);
+  document.getElementById('btn-step').addEventListener('click', handleDpllStep);
+  document.getElementById('btn-propagate').addEventListener('click', handleDpllPropagateAll);
+  document.getElementById('btn-run').addEventListener('click', handleDpllRunToEnd);
+  document.getElementById('btn-reset').addEventListener('click', handleDpllReset);
+  
+  // Initial render
+  render();
+}
+
+// Start the application
+init();
+  </script>
+</body>
+</html>

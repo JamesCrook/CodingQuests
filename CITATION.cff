@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+type: dataset
+title: "CodingQuests: Coding Pedagogy Paths"
+message: "Results are in /findings/"
+authors:
+  - family-names: Crook
+    given-names: James
+    orcid: https://orcid.org/0009-0006-0493-9439
+repository-code: https://github.com/JamesCrook/SeqQuests
+abstract: >-
+  To be written
+keywords:
+  - pedagogy
+  - interctables
+license: CC-BY-4.0
+version: "0.1"
+date-released: "2026-01-11"
+doi: 10.5281/zenodo.[TBA]

@@ -1,0 +1,961 @@
+/* =============================================================================
+   STYLE.CSS - With Structural/Aesthetic Separation
+   =============================================================================
+   
+   ORGANIZATION:
+   1. Variables (structural, then aesthetic)
+   2. Reset & Base (structural)
+   3. Structural Utilities (layout, flex, scroll, z-index)
+   4. Component Structure (panels, modals, forms)
+   5. Aesthetic Base (typography, colors)
+   6. Component Aesthetics (themed styling)
+   7. Interactive States (hover, active, focus)
+   8. Animations
+   
+   ============================================================================= */
+
+
+
+/* =============================================================================
+   1. VARIABLES
+   ============================================================================= */
+
+/* Import fonts before any other work*/
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Work+Sans:wght@400;500;600&display=swap');
+
+
+:root {
+    /* --- STRUCTURAL: Spacing Scale --- */
+    --space-us: 2px;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 15px;
+    --space-lg: 20px;
+    --space-xl: 30px;
+    
+    /* --- STRUCTURAL: Z-Index Scale --- */
+    --z-base: 1;
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-modal: 100;
+    --z-overlay: 1000;
+    
+    /* --- STRUCTURAL: Sizing --- */
+    --sidebar-width: 190px;
+    --header-height: auto;
+    --panel-border-width: 3px;
+    --scrollbar-size: 10px;
+    
+    /* --- AESTHETIC: Colors --- */
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a2e;
+    --color-bg-tertiary: #2d2d44;
+    
+    --color-accent-primary: #ff9966;
+    --color-accent-secondary: #cc99ff;
+    --color-accent-tertiary: #ffcc99;
+    --color-accent-alert: #ff6666;
+    --color-accent-success: #99ccff;
+    
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #cccccc;
+    --color-text-muted: #999999;
+    --color-back-mono: #00000070;
+    
+    --color-border: #ff9966;
+    --color-hover-bg: rgba(255, 153, 102, 0.1);
+    --color-accent-primary-20: #00002070;
+    --color-accent-primary-30: #00002070;
+    --color-accent-primary-5: #00002070;
+    
+    /* --- AESTHETIC: Typography --- */
+    --font-body: 'Work Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-size-xs: 0.7rem;
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.85rem;
+    --font-size-md: 0.9rem;
+    --font-size-lg: 1.1rem;
+    --font-size-h3: 1.1rem;
+    --font-size-h2: 1.4rem;
+    --font-size-h1: 1.8rem;
+    
+    /* --- AESTHETIC: Decorative --- */
+    --radius-sm: 5px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-round: 50%;
+    --shadow-default: 0 4px 20px rgba(0, 0, 0, 0.6);
+    --shadow-hover: 0 2px 8px rgba(255, 153, 102, 0.3);
+    
+    /* --- AESTHETIC: Transitions --- */
+    --transition-fast: 0.2s ease;
+    --transition-medium: 0.3s ease;
+    --transition-bounce: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =============================================================================
+   2. RESET & BASE (Structural)
+   ============================================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    /* Structural */
+    min-height: 100vh;
+    overflow-x: hidden;
+    margin: 0;
+    /* Aesthetic */
+    font-family: var(--font-body);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+}
+
+
+/* =============================================================================
+   3. STRUCTURAL UTILITIES
+   ============================================================================= */
+
+/* --- Display & Visibility --- */
+.hidden { display: none !important; }
+
+/* --- Flex Containers --- */
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-center { align-items: center; justify-content: center; }
+
+/* --- Flex Items --- */
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.flex-shrink-0 { flex-shrink: 0; }
+.flex-fill { flex: 1 1 0; min-height: 0; }
+.flex-fixed { flex: 1 1 0;}
+
+/* --- Scroll Regions --- */
+.scroll-y { overflow-y: auto; min-height: 0;}
+.scroll-x { overflow-x: auto; }
+.scroll-both { overflow: auto; }
+.no-scroll { overflow: hidden; }
+
+/* --- Positioning --- */
+.pos-relative { position: relative; }
+.pos-absolute { position: absolute; }
+.pos-fixed { position: fixed; }
+
+/* --- Z-Index Layers --- */
+.z-base { z-index: var(--z-base); }
+.z-dropdown { z-index: var(--z-dropdown); }
+.z-sticky { z-index: var(--z-sticky); }
+.z-modal { z-index: var(--z-modal); }
+.z-overlay { z-index: var(--z-overlay); }
+
+/* --- Min-height fix for flex scroll --- */
+.min-h-0 { min-height: 0; }
+
+
+/* =============================================================================
+   4. COMPONENT STRUCTURE
+   ============================================================================= */
+
+/* --- App Shell --- */
+.app-root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.button-holder {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* --- Container --- */
+.container {
+    max-width: 2000px;
+    margin: var(--space-lg) auto;
+    padding: var(--space-lg);
+    position: relative;
+}
+
+/* --- Explorer Layout (Flex-based) --- */
+.container.explorer-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    /*height: calc(100vh - 100px);*/
+    padding: 0;
+    flex: 1 1 0; 
+    min-height: 0;
+    margin:0px;
+}
+
+.wide-400-more-or-less {
+    flex: 10 1 400px;
+    min-width: 400px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.wide-700-or-more {
+    flex: 1 0 700px;
+    min-width: 700px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.alignment-panel {
+    flex: 1 1 100%;
+    width: 100%;
+    order: 3;
+    height: 480px;
+    min-height: 0;
+    margin-top: var(--space-sm);
+}
+
+/* --- Panel --- */
+.panel, .panel-tight {
+    display: flex;
+    flex-direction: column;
+    /*flex: 1 1 0;*/
+    min-height: 0;
+    position: relative;
+}
+
+/* --- Panel Header --- */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    padding: var(--space-md) 24px;
+}
+
+/* --- Header Bar --- */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    padding: var(--space-md) var(--space-xl);
+    margin-bottom: var(--space-lg);
+}
+
+header h1 {
+    padding: 0;
+    margin-right: auto;  /* Pushes status-indicator to the right */
+    margin-left: 1.3rem;   /* Small gap between hamburger and title */
+    margin-bottom: 0px;
+    margin-top: 0px;
+}
+/* --- Scrollable Content Areas --- */
+.findings-list,
+.pair-container {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-md);
+}
+
+/* --- Modal Structure --- */
+#config-modal {
+    display: none;
+    position: fixed;
+    z-index: var(--z-modal);
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+#modal-content {
+    margin: 5% auto;
+    width: 80%;
+    min-height: 90%;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-lg);
+}
+
+#config-iframe {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    border: none;
+}
+
+.modal-footer {
+    padding: var(--space-sm);
+    text-align: right;
+}
+
+/* --- Center Container --- */
+.center-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.centered-panel-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: var(--space-xl);
+    min-height: 0;
+}
+
+/* --- Stats Bar --- */
+.stats-bar {
+    display: flex;
+    gap: var(--space-lg);
+    padding: 16px var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.stats-bar-wrap {
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+/* --- Progress Bar Structure --- */
+.progress-bar-container {
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Status Indicator --- */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+}
+
+/* --- Hamburger Menu Structure --- */
+.hamburger-menu {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 24px;
+    padding: 0;
+    z-index: var(--z-dropdown);
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+.hamburger-menu span {
+    display: block;
+    width: 100%;
+    height: 3px;
+}
+
+/* --- Empty State --- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+}
+
+/* --- Sequence Label Structure --- */
+.sequence-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.sequence-label::before {
+    content: '';
+    width: 3px;
+    height: 14px;
+}
+
+/* --- Sequence Text Structure --- */
+.sequence-text {
+    word-break: break-all;
+    white-space: pre-wrap;
+    width: 100%;
+    max-width: 84ch;
+    padding: 1px;
+}
+
+/* --- Alignment Viewer Structure --- */
+.alignment-viewer-container {
+    white-space: pre;
+}
+
+/* --- Mol Container --- */
+.mol-container {
+    width: 100%;
+    height: 600px;
+    position: relative;
+}
+
+/* --- Loading Spinner Structure --- */
+.loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+}
+
+
+/* =============================================================================
+   5. AESTHETIC BASE
+   ============================================================================= */
+
+/* --- Typography --- */
+h1, h2, h3 {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--color-accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: var(--space-md);
+}
+
+h1 { font-size: var(--font-size-h1); padding: var(--space-lg); }
+h2 { font-size: var(--font-size-h2); }
+h3 { font-size: var(--font-size-h3); }
+
+a {
+    color: var(--color-accent-success);
+    text-decoration: none;
+}
+
+/* --- Decorative Corner Elements --- */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, var(--color-accent-primary) 0%, transparent 70%);
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: -1;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(-135deg, var(--color-accent-secondary) 0%, transparent 70%);
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: -1;
+}
+
+ul { padding-left:20px; }
+
+/* --- Scrollbar Aesthetics --- */
+::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-accent-primary);
+    border-radius: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-tertiary);
+}
+
+
+/* =============================================================================
+   6. COMPONENT AESTHETICS
+   ============================================================================= */
+
+/* --- Container Aesthetics --- */
+.container {
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+.container.explorer-layout {
+    background: none;
+    border: none;
+}
+
+/* --- Panel Aesthetics --- */
+.panel, .panel-tight
+{
+    background: var(--color-bg-secondary);
+    border: var(--panel-border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    /*margin-bottom: var(--space-lg);*/
+}
+
+.panel
+{
+    padding: var(--space-md);
+}
+
+/* --- Panel Header Aesthetics --- */
+.panel-header {
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-lg);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.panel-title {
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--color-accent-primary);
+}
+
+.panel-badge {
+    background: var(--color-accent-primary-20);
+    color: var(--color-accent-primary);
+    padding: var(--space-xs) 14px;
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-accent-primary);
+}
+
+/* --- Header Aesthetics --- */
+header {
+    background: var(--color-bg-secondary);
+    border-bottom: var(--panel-border-width) solid var(--color-accent-primary);
+}
+
+/* --- Log/Output Area Aesthetics --- */
+#log, .log-output, .findings-list, .pair-container,
+.sequence-viewer {
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    /*padding: var(--space-md);*/
+    font-family: var(--font-mono);
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-bg-secondary);
+}
+
+/* --- Alignment Viewer Structure --- */
+.alignment-viewer-container {
+    color: var(--color-text-primary);
+    background: var(--color-back-mono);
+    border-radius: var(--radius-sm);
+}
+
+
+#log, .log-output {
+    min-height: 100px;
+}
+
+.sequence-viewer {
+    padding: 0;
+}
+
+.findings-list,
+.pair-container {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-base);
+    line-height: 1.8;
+    color: var(--color-text-secondary);
+}
+
+/* --- Button Aesthetics --- */
+button, .copy-button, .job-button {
+    background: var(--color-accent-primary-20);
+    color: var(--color-accent-primary);
+    padding: var(--space-xs) 14px;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-accent-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+button:disabled {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-text-muted);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+}
+
+/* --- Form Input Aesthetics --- */
+input[type="text"], input[type="number"], select {
+    background: var(--color-accent-primary-20);
+    border: 1px solid var(--color-accent-primary);
+    color: var(--color-accent-primary);
+    padding: var(--space-us);
+    margin: var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+}
+
+input[type="checkbox"] {
+    background: var(--color-accent-primary-20);
+    accent-color: var(--color-accent-primary);
+}
+
+label {
+    color: var(--color-accent-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* --- Modal Aesthetics --- */
+#config-modal {
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+
+#modal-content {
+    background-color: var(--color-bg-secondary);
+    border: var(--panel-border-width) solid var(--color-accent-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-default);
+}
+
+#config-iframe {
+    background: transparent;
+}
+
+/* --- Job/Finding Item Aesthetics --- */
+.job-item, .finding-entry {
+    margin-bottom: var(--space-sm);
+    padding: 12px var(--space-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-bounce);
+    cursor: pointer;
+    border-left: 4px solid transparent;
+    background: var(--color-back-mono);
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+}
+
+.finding-header {
+    color: var(--color-accent-tertiary);
+    font-weight: 600;
+    margin-bottom: var(--space-sm);
+}
+
+.finding-detail {
+    color: var(--color-text-secondary);
+    padding-left: var(--space-sm);
+    transition: color var(--transition-fast);
+}
+
+/* --- Stats Bar Aesthetics --- */
+.stats-bar {
+    background: var(--color-accent-primary-05);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-accent-primary-30);
+}
+
+.stat-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-accent-primary);
+    font-family: var(--font-mono);
+}
+
+/* --- Progress Bar Aesthetics --- */
+.progress-bar {
+    background-color: var(--color-bg-tertiary);
+    border-radius: 15px;
+    border: 1px solid var(--color-accent-secondary);
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
+    transition: width var(--transition-medium);
+    color: var(--color-bg-primary);
+    font-weight: bold;
+}
+
+/* --- Status Colors --- */
+.error { color: var(--color-accent-alert); }
+.success { color: var(--color-accent-success); }
+.status.loading { color: var(--color-accent-tertiary); }
+.status.complete { color: var(--color-accent-success); }
+.status.error { color: var(--color-accent-alert); }
+
+/* --- Status Indicator Aesthetics --- */
+.status-indicator {
+    font-size: var(--font-size-md);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.status-dot {
+    border-radius: var(--radius-round);
+    background: var(--color-accent-alert);
+    transition: background var(--transition-medium);
+}
+
+.status-dot.connected {
+    background: var(--color-accent-success);
+    animation: blink 2s ease-in-out infinite;
+}
+
+.status-dot.disconnected {
+    background: var(--color-accent-alert);
+    animation: none;
+}
+
+/* --- Hamburger Menu Aesthetics --- */
+.hamburger-menu span {
+    background-color: var(--color-accent-primary);
+    border-radius: 2px;
+    transition: all var(--transition-medium);
+}
+
+/* --- Empty State Aesthetics --- */
+.empty-state {
+    color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-lg);
+    opacity: 0.3;
+}
+
+/* --- Sequence Aesthetics --- */
+.sequence-label {
+    color: var(--color-accent-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.8rem;
+}
+
+.sequence-label::before {
+    background: var(--color-accent-secondary);
+    border-radius: 2px;
+}
+
+.sequence-text {
+    color: var(--color-text-primary);
+    background: var(--color-back-mono);
+    border-radius: var(--radius-sm);
+/*    border-left: 3px solid var(--color-accent-primary);*/
+}
+
+/* --- Alignment Viewer Aesthetics --- */
+.alignment-viewer {
+    color: var(--color-text-primary);
+}
+
+.aa-match { color: var(--color-accent-primary); font-weight: 600; }
+.aa-mismatch { color: var(--color-text-muted); }
+.aa-gap { color: var(--color-accent-secondary); }
+
+/* --- Loading Spinner Aesthetics --- */
+.loading {
+    border: 2px solid var(--color-accent-primary);
+    border-radius: var(--radius-round);
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+}
+
+/* --- Demo Padding --- */
+.demo-padding {
+    padding: var(--space-lg);
+}
+
+
+/* =============================================================================
+   7. INTERACTIVE STATES
+   ============================================================================= */
+
+a:hover {
+    text-decoration: underline;
+}
+
+button:hover, .copy-button:hover, .job-button:hover {
+    background: var(--color-accent-primary-30);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+}
+
+button:active, .copy-button:active, .job-button:active {
+    transform: translateY(0);
+}
+
+button:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.job-item:hover, .finding-entry:hover {
+    transform: translateX(4px);
+}
+
+.job-item.active-job, .finding-entry.active {
+    background: var(--color-accent-primary-20);
+    border-left-color: var(--color-accent-primary);
+    font-weight: normal;
+}
+
+.finding-entry:hover .finding-detail {
+    color: var(--color-text-primary);
+}
+
+.copy-button.copied {
+    background: rgba(153, 204, 255, 0.2);
+    color: var(--color-accent-success);
+    border-color: var(--color-accent-success);
+}
+
+.hamburger-menu:hover {
+    opacity: 0.8;
+}
+
+/* Hamburger active state */
+.hamburger-menu.active span:nth-child(1) {
+    transform: translateY(10.5px) rotate(45deg);
+}
+
+.hamburger-menu.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active span:nth-child(3) {
+    transform: translateY(-10.5px) rotate(-45deg);
+}
+
+/* Multiscroll button active */
+#multiscrollBtn.active {
+    background-color: var(--color-accent-primary);
+    color: var(--color-bg-primary);
+}
+
+/* --- Draggable --- */
+.draggable {
+    cursor: grab;
+}
+
+.draggable:active {
+    cursor: grabbing;
+    user-select: none;
+}
+
+
+/* =============================================================================
+   8. ANIMATIONS
+   ============================================================================= */
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Sequence section animations */
+.sequence-section {
+    margin-bottom: 28px;
+    opacity: 0;
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.sequence-section:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.sequence-section:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+@media (max-width: 768px) {
+    .app-root{
+        height:auto;
+        overflow: auto;
+    }
+    .scroll-y {
+    flex: 0 0 auto;      /* Don't grow, don't shrink, size to content */
+    min-height: auto;    /* Undo the min-height: 0 */
+    overflow: visible;   /* Let content flow naturally */
+    }    
+}

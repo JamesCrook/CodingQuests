@@ -31,11 +31,6 @@ For accelerated Smith-Waterman searches on Apple Silicon (M1/M2/M3/M4):
     ```
     *Note: This requires `metal-cpp` to be available, see prerequisites 1a*
 
-5.  Install the LEAN mathlib dataset
-    ```bash
-    ./get_mathlib.sh
-    ```
-
 ## 3. Running Tools via CLI
 
 MathsQuests is built on top of command line tools. See /docs/tutorials/cli for more details.

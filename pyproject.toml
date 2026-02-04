@@ -5,9 +5,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seqquests"
+name = "codingquests"
 version = "0.1.0"
-description = "Metal-accelerated protein sequence analysis"
+description = "Metal-accelerated coding tools"
 requires-python = ">=3.8"
 dependencies = [
     # Core dependencies (all platforms)

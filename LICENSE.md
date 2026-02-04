@@ -4,9 +4,6 @@
 
 Docs and images in the /docs folder are copyright James Crook 2026 and are CC-BY-4.0. The general pattern is that documents are CC-BY-4.0 and software MIT, whilst citing/respecting copyrights of original sources.
 
-For clarity, the /findings folder is not to be considered 'part of the associated documentation'. It is not documentation for the program, rather it results from using the program. Any republishing modified or otherwise must respect the original UniProt CC-BY-4.0 of the underlying data. 
-
-
 ## Software 
 
 CodingQuests software is MIT Licensed:

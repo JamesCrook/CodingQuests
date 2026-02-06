@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniTree – Folder Tree Viewer</title>
+  <link rel="icon" type="image/x-icon" href="../wheel.ico">
+  <script src="../js/utilities/nav.js"></script>
+  <link rel="stylesheet" href="omnibase.css">
+  <style>
+    /* OmniTree-specific styles */
+    .tree-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    
+    .tree-container.scrolling {
+      cursor: default;
+    }
+    
+    .tree-container.dragging {
+      cursor: grabbing;
+    }
+    
+    .ascii-output {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0f0f23;
+      border-radius: 8px;
+      padding: 20px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #a1a1aa;
+      overflow: auto;
+      white-space: pre;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    
+    .ascii-output.active {
+      pointer-events: auto;
+    }
+    
+    .ascii-output::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .ascii-output::-webkit-scrollbar-track {
+      background: #16213e;
+      border-radius: 4px;
+    }
+    
+    .ascii-output::-webkit-scrollbar-thumb {
+      background: #4fc3f7;
+      border-radius: 4px;
+    }
+    
+    #treeCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #0f0f23;
+      border-radius: 8px;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    
+    #treeCanvas.active {
+      pointer-events: auto;
+    }
+    
+    .tree-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+    }
+    
+    .tree-info .value {
+      color: #ccc;
+    }
+    
+    /* Toggle styles integrated into control panel */
+    .toggle-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 0;
+    }
+    
+    .toggle-item input {
+      display: none;
+    }
+    
+    .toggle-slider {
+      width: 36px;
+      height: 20px;
+      background: #3f3f46;
+      border-radius: 10px;
+      position: relative;
+      transition: background 0.2s ease;
+      flex-shrink: 0;
+    }
+    
+    .toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #e4e4e7;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s ease;
+    }
+    
+    .toggle-item input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    }
+    
+    .toggle-item input:checked + .toggle-slider::after {
+      transform: translateX(16px);
+    }
+    
+    .toggle-label {
+      font-size: 11px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>OmniTree</h1>
+    <p class="subtitle">Folder tree viewer with ASCII and radial visualization.</p>
+  </header>
+  
+  <div class="layout">
+    <div class="chart-container" id="chart-container">
+      <div class="tree-container">
+        <div class="ascii-output" id="asciiOutput">Drop a folder to begin...</div>
+        <canvas id="treeCanvas"></canvas>
+      </div>
+    </div>
+    <div class="controls-wrapper">
+      <div class="multiscroller-strip" id="multiscroller"></div>
+      <div class="controls" id="controls"></div>
+    </div>
+  </div>
+
+  <script src="omnibase.js"></script>
+  <script>
+  (function() {
+    // ============================================================
+    // State
+    // ============================================================
+    
+    let treeData = null;
+    let lastEntries = null;
+    let lastFiles = null;
+    
+    // Sample trees
+    const SAMPLE_TREES = {
+      "Workout Routines": {
+        "Cardio": ["Running", "Cycling", "Swimming"],
+        "Strength": {
+          "Upper Body": ["Push-ups", "Pull-ups"],
+          "Lower Body": ["Squats", "Lunges"]
+        },
+        "Flexibility": ["Yoga", "Stretching"]
+      },
+      "Teas": {
+        "Black Tea": ["Earl Grey", "English Breakfast", "Darjeeling"],
+        "Green Tea": ["Sencha", "Matcha", "Dragon Well"],
+        "Herbal Tea": ["Chamomile", "Peppermint", "Rooibos"]
+      }
+    };
+    
+    const SAMPLE_OPTIONS = [
+      { value: '', label: '-- Select sample --' },
+      { value: 'Teas', label: 'Teas' },
+      { value: 'Workout Routines', label: 'Workout Routines' }
+    ];
+    
+    // ============================================================
+    // Slider Configuration
+    // ============================================================
+    
+    // ============================================================
+    // Slider Configuration
+    // ============================================================
+    
+    const PRESETS = {
+      'ASCII': {
+        viewMode: 0,
+        zoom: 1
+      },
+      'Radial': {
+        viewMode: 1,
+        labelRotation: 1,
+        fontSize: 11,
+        zoom: 1
+      },
+      'Readable': {
+        viewMode: 1,
+        labelRotation: 0,
+        fontSize: 12,
+        zoom: 1.5
+      }
+    };
+    
+    const SLIDER_CONFIG = [
+      { 
+        group: 'Load Folder', 
+        id: 'load', 
+        abbrev: 'Load',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const dropEl = document.createElement('div');
+          dropEl.className = 'file-drop';
+          dropEl.id = 'folderDrop';
+          dropEl.innerHTML = `
+            <div class="file-drop-icon">🗂️</div>
+            <div>Drop folder or click</div>
+          `;
+          
+          dropEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropEl.classList.add('dragover');
+          });
+          
+          dropEl.addEventListener('dragleave', () => {
+            dropEl.classList.remove('dragover');
+          });
+          
+          dropEl.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropEl.classList.remove('dragover');
+            const items = e.dataTransfer.items;
+            if (items) {
+              const entries = [];
+              for (const item of items) {
+                const entry = item.webkitGetAsEntry();
+                if (entry) entries.push(entry);
+              }
+              if (entries.length > 0) {
+                lastEntries = entries;
+                lastFiles = null;
+                await processEntries(entries);
+              }
+            }
+          });
+          
+          dropEl.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true;
+            input.multiple = true;
+            input.onchange = () => {
+              const files = Array.from(input.files);
+              if (files.length > 0) {
+                lastFiles = files;
+                lastEntries = null;
+                processFiles(files);
+              }
+            };
+            input.click();
+          });
+          
+          groupEl.appendChild(dropEl);
+        }
+      },
+      { 
+        group: 'Load Folder', 
+        id: 'status', 
+        type: 'status',
+        statusId: 'treeStatus'
+      },
+      {
+        group: 'Sample Data',
+        id: 'sample',
+        abbrev: 'Smp',
+        type: 'select',
+        selectId: 'sampleSelect',
+        options: SAMPLE_OPTIONS,
+        onChange: (value, base) => {
+          if (value) {
+            loadSampleTree(value);
+          }
+        }
+      },
+      { group: 'Presets', id: 'presets', abbrev: 'Pre', type: 'presets' },
+      { 
+        group: 'Options', 
+        id: 'options', 
+        abbrev: 'Opt',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const container = document.createElement('div');
+          container.className = 'toggle-group';
+          
+          // Skip files toggle
+          const skipToggle = document.createElement('label');
+          skipToggle.className = 'toggle-item';
+          skipToggle.innerHTML = `
+            <input type="checkbox" id="skipFiles" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Skip .DS_Store and .git</span>
+          `;
+          container.appendChild(skipToggle);
+          
+          // Add comments toggle
+          const commentToggle = document.createElement('label');
+          commentToggle.className = 'toggle-item';
+          commentToggle.innerHTML = `
+            <input type="checkbox" id="addComments">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Add # for comments</span>
+          `;
+          container.appendChild(commentToggle);
+          
+          // Listen for changes
+          skipToggle.addEventListener('change', regenerate);
+          commentToggle.addEventListener('change', regenerate);
+          
+          groupEl.appendChild(container);
+        }
+      },
+      { 
+        group: 'Display', 
+        id: 'display', 
+        abbrev: 'Dis',
+        sliders: [
+          { id: 'viewMode', label: 'View mode (ASCII→Radial)', min: 0, max: 1, step: 0.01, default: 0 }
+        ]
+      },
+      { 
+        group: 'View', 
+        id: 'view', 
+        abbrev: 'View',
+        sliders: [
+          { id: 'zoom', label: 'Zoom', min: 0.25, max: 3, step: 0.05, default: 1 }
+        ]
+      },
+      { 
+        group: 'Radial Options', 
+        id: 'radial', 
+        abbrev: 'Rad',
+        sliders: [
+          { id: 'overallRotation', label: 'Overall rotation', min: 0, max: 360, step: 1, default: 0, format: 'degInt' },
+          { id: 'nodeSize', label: 'Node size', min: 2, max: 8, step: 0.5, default: 4 },
+          { id: 'angleSpread', label: 'Angle spread', min: 0.3, max: 1, step: 0.01, default: 0.85 },
+          { id: 'radiusScale', label: 'Radius scale', min: 0.5, max: 2, step: 0.05, default: 1 }
+        ]
+      },
+      { 
+        group: 'Label Options', 
+        id: 'labels', 
+        abbrev: 'Lbl',
+        sliders: [
+          { id: 'labelRotation', label: 'Label rotation', min: 0, max: 1, step: 0.01, default: 0 },
+          { id: 'fontSize', label: 'Font size', min: 8, max: 16, step: 1, default: 11, format: 'int' },
+          { id: 'textDensity', label: 'Text density', min: 0, max: 1, step: 0.01, default: 0.5 }
+        ]
+      },
+      {
+        group: 'Actions',
+        id: 'actions',
+        abbrev: 'Act',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'btn';
+          copyBtn.textContent = 'Copy ASCII';
+          copyBtn.id = 'copyBtn';
+          copyBtn.style.marginBottom = '12px';
+          copyBtn.addEventListener('click', copyToClipboard);
+          groupEl.appendChild(copyBtn);
+          
+          const downloadBtn = document.createElement('button');
+          downloadBtn.className = 'btn secondary';
+          downloadBtn.textContent = 'Download .txt';
+          downloadBtn.addEventListener('click', downloadTxt);
+          groupEl.appendChild(downloadBtn);
+          
+          const resetViewBtn = document.createElement('button');
+          resetViewBtn.className = 'btn secondary';
+          resetViewBtn.textContent = 'Reset View';
+          resetViewBtn.style.marginTop = '8px';
+          resetViewBtn.addEventListener('click', () => {
+            camera.x = 0;
+            camera.y = 0;
+            base.updateSlider('zoom', 1, false);
+            render();
+          });
+          groupEl.appendChild(resetViewBtn);
+          
+          const clearBtn = document.createElement('button');
+          clearBtn.className = 'btn secondary';
+          clearBtn.textContent = 'Clear';
+          clearBtn.style.marginTop = '4px';
+          clearBtn.addEventListener('click', clearOutput);
+          groupEl.appendChild(clearBtn);
+          
+          // Info display
+          const info = document.createElement('div');
+          info.className = 'tree-info';
+          info.style.marginTop = '12px';
+          info.innerHTML = `
+            <span>Folder: <span class="value" id="folderName">—</span></span>
+          `;
+          groupEl.appendChild(info);
+          
+          const info2 = document.createElement('div');
+          info2.className = 'tree-info';
+          info2.innerHTML = `
+            <span>Files: <span class="value" id="fileCount">0</span></span>
+            <span>Dirs: <span class="value" id="dirCount">0</span></span>
+          `;
+          groupEl.appendChild(info2);
+        }
+      }
+    ];
+    
+    // ============================================================
+    // Canvas Setup
+    // ============================================================
+    
+    const canvas = document.getElementById('treeCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('chart-container');
+    const treeContainer = document.querySelector('.tree-container');
+    const asciiOutput = document.getElementById('asciiOutput');
+    
+    let base = null; // Will be initialized later
+    
+    // Pan/zoom state for canvas
+    let camera = {
+      x: 0,
+      y: 0,
+      zoom: 1  // Will be synced from slider
+    };
+    
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    
+    function resizeCanvas() {
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width - 10;
+      canvas.height = rect.height - 10;
+      if (base) render();
+    }
+    
+    // ============================================================
+    // Data Processing
+    // ============================================================
+    
+    function objectToTree(obj, name) {
+      const result = {
+        type: 'directory',
+        name: name,
+        children: []
+      };
+      
+      for (const [key, value] of Object.entries(obj)) {
+        if (Array.isArray(value)) {
+          // It's a folder with file children
+          const folder = {
+            type: 'directory',
+            name: key,
+            children: value.map(item => ({ type: 'file', name: item }))
+          };
+          result.children.push(folder);
+        } else if (typeof value === 'object') {
+          // It's a nested folder
+          result.children.push(objectToTree(value, key));
+        } else {
+          // It's a file
+          result.children.push({ type: 'file', name: key });
+        }
+      }
+      
+      return result;
+    }
+    
+    function loadSampleTree(sampleName) {
+      if (!SAMPLE_TREES[sampleName]) return;
+      
+      treeData = objectToTree(SAMPLE_TREES[sampleName], sampleName);
+      lastEntries = null;
+      lastFiles = null;
+      
+      generateOutput();
+    }
+    
+    async function processEntries(entries) {
+      try {
+        const rootNode = await readEntry(entries[0]);
+        treeData = rootNode;
+        
+        // Clear sample selection
+        document.getElementById('sampleSelect').value = '';
+        
+        generateOutput();
+      } catch (err) {
+        if (base) {
+          base.setStatus('Error reading folder: ' + err.message, true);
+        } else {
+          console.error('Error reading folder:', err);
+        }
+      }
+    }
+    
+    async function readEntry(entry, path = '') {
+      if (entry.isFile) {
+        return { type: 'file', name: entry.name };
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const children = await new Promise((resolve) => {
+          const results = [];
+          const readBatch = () => {
+            dirReader.readEntries((entries) => {
+              if (entries.length === 0) {
+                resolve(results);
+              } else {
+                results.push(...entries);
+                readBatch();
+              }
+            });
+          };
+          readBatch();
+        });
+        
+        const skipFiles = document.getElementById('skipFiles').checked;
+        const childNodes = await Promise.all(
+          children
+            .filter(child => {
+              if (!skipFiles) return true;
+              return child.name !== '.DS_Store' && child.name !== '.git';
+            })
+            .map(child => readEntry(child, path + '/' + entry.name))
+        );
+        
+        return {
+          type: 'directory',
+          name: entry.name,
+          children: childNodes.sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          })
+        };
+      }
+    }
+    
+    function processFiles(files) {
+      try {
+        const tree = { type: 'directory', name: '', children: [] };
+        const paths = files.map(f => f.webkitRelativePath.split('/'));
+        const rootName = paths[0][0];
+        tree.name = rootName;
+        
+        const skipFiles = document.getElementById('skipFiles').checked;
+        files.filter(file => {
+          if (!skipFiles) return true;
+          const parts = file.webkitRelativePath.split('/');
+          return !parts.includes('.git') && !file.name.endsWith('.DS_Store');
+        }).forEach(file => {
+          const parts = file.webkitRelativePath.split('/').slice(1);
+          let current = tree;
+          
+          parts.forEach((part, i) => {
+            if (i === parts.length - 1) {
+              current.children.push({ type: 'file', name: part });
+            } else {
+              let dir = current.children.find(c => c.type === 'directory' && c.name === part);
+              if (!dir) {
+                dir = { type: 'directory', name: part, children: [] };
+                current.children.push(dir);
+              }
+              current = dir;
+            }
+          });
+        });
+        
+        function sortNode(node) {
+          if (node.children) {
+            node.children.sort((a, b) => {
+              if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+              return a.name.localeCompare(b.name);
+            });
+            node.children.forEach(sortNode);
+          }
+        }
+        sortNode(tree);
+        
+        treeData = tree;
+        
+        // Clear sample selection
+        document.getElementById('sampleSelect').value = '';
+        
+        generateOutput();
+      } catch (err) {
+        if (base) {
+          base.setStatus('Error processing files: ' + err.message, true);
+        } else {
+          console.error('Error processing files:', err);
+        }
+      }
+    }
+    
+    function regenerate() {
+      if (lastEntries) {
+        processEntries(lastEntries);
+      } else if (lastFiles) {
+        processFiles(lastFiles);
+      }
+    }
+    
+    // ============================================================
+    // ASCII Generation
+    // ============================================================
+    
+    function generateOutput() {
+      if (!treeData) return;
+      
+      let fileCount = 0;
+      let dirCount = 0;
+      const lines = [];
+      
+      function traverse(node, prefix = '', isLast = true, isRoot = true) {
+        if (isRoot) {
+          lines.push(node.name + '/');
+          dirCount++;
+        } else {
+          const connector = isLast ? '└─ ' : '├─ ';
+          const suffix = node.type === 'directory' ? '/' : '';
+          lines.push(prefix + connector + node.name + suffix);
+          
+          if (node.type === 'directory') dirCount++;
+          else fileCount++;
+        }
+        
+        if (node.children) {
+          const childPrefix = prefix + (isRoot ? '' : (isLast ? '   ' : '│  '));
+          node.children.forEach((child, i) => {
+            const childIsLast = i === node.children.length - 1;
+            traverse(child, childPrefix, childIsLast, false);
+          });
+        }
+      }
+      
+      traverse(treeData);
+      
+      let asciiText;
+      if (document.getElementById('addComments').checked) {
+        const maxLen = Math.max(...lines.map(l => l.length));
+        const padTo = maxLen + 4;
+        asciiText = lines.map(l => l.padEnd(padTo) + '#').join('\n');
+      } else {
+        asciiText = lines.join('\n');
+      }
+      
+      asciiOutput.textContent = asciiText;
+      document.getElementById('folderName').textContent = treeData.name + '/';
+      document.getElementById('fileCount').textContent = fileCount;
+      document.getElementById('dirCount').textContent = dirCount;
+      
+      if (base) {
+        base.setStatus('Tree generated successfully');
+        setTimeout(() => base.clearStatus(), 3000);
+      }
+      
+      if (base) render();
+    }
+    
+    // ============================================================
+    // Radial Tree Rendering
+    // ============================================================
+    
+    function drawRadialTree() {
+      if (!treeData) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Use zoom from slider
+      camera.zoom = base.params.zoom;
+      
+      // Apply camera transform
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(camera.zoom, camera.zoom);
+      ctx.translate(camera.x, camera.y);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+      
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const maxRadius = Math.min(canvas.width, canvas.height) * 0.4;
+      
+      const nodeSize = base.params.nodeSize;
+      const angleSpread = base.params.angleSpread;
+      const radiusScale = base.params.radiusScale;
+      const textDensity = base.params.textDensity;
+      const labelRotation = base.params.labelRotation;
+      const fontSize = base.params.fontSize;
+      const overallRotation = base.params.overallRotation * Math.PI / 180; // Convert to radians
+      
+      // Text density: track last drawn text position
+      let lastTextX = null;
+      let lastTextY = null;
+      const minTextDistance = (1 - textDensity) * 100;
+      
+      // Calculate tree depth
+      function getDepth(node) {
+        if (!node.children || node.children.length === 0) return 0;
+        return 1 + Math.max(...node.children.map(getDepth));
+      }
+      
+      const maxDepth = getDepth(treeData);
+      
+      function drawNode(node, x, y, angle, angleRange, depth) {
+        // Draw node
+        ctx.fillStyle = node.type === 'directory' ? '#4fc3f7' : '#888';
+        ctx.beginPath();
+        ctx.arc(x, y, nodeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw label (with density filtering)
+        if (depth < 3 || nodeSize > 3) {
+          let shouldDrawText = true;
+          
+          // Check distance to last drawn text
+          if (lastTextX !== null && lastTextY !== null) {
+            const dx = x - lastTextX;
+            const dy = y - lastTextY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < minTextDistance) {
+              shouldDrawText = false;
+            }
+          }
+          
+          if (shouldDrawText) {
+            ctx.save();
+            
+            ctx.fillStyle = '#ccc';
+            ctx.font = `${fontSize}px monospace`;
+            const text = node.name.length > 15 ? node.name.substring(0, 12) + '...' : node.name;
+            const textWidth = ctx.measureText(text).width;
+            
+            // Calculate rotation based on labelRotation slider
+            // 0 = horizontal (no rotation)
+            // 1 = radial (perpendicular to radius)
+            let textAngle = 0;
+            if (labelRotation > 0) {
+              // Radial angle (perpendicular to line from center)
+              const radialAngle = angle + Math.PI / 2;
+              textAngle = radialAngle * labelRotation;
+              
+              // Flip text if it would be upside down
+              if (Math.cos(textAngle) < 0) {
+                textAngle += Math.PI;
+              }
+            }
+            
+            // Apply rotation
+            ctx.translate(x, y - nodeSize - 4);
+            ctx.rotate(textAngle);
+            ctx.fillText(text, -textWidth / 2, 0);
+            
+            ctx.restore();
+            
+            // Update last text position
+            lastTextX = x;
+            lastTextY = y;
+          }
+        }
+        
+        // Draw children
+        if (node.children && node.children.length > 0) {
+          const numChildren = node.children.length;
+          const childAngleRange = angleRange * angleSpread;
+          const childAngleStep = childAngleRange / Math.max(1, numChildren - 1);
+          const startAngle = angle - childAngleRange / 2;
+          
+          const childRadius = maxRadius * radiusScale * ((depth + 1) / maxDepth);
+          
+          node.children.forEach((child, i) => {
+            const childAngle = startAngle + (numChildren === 1 ? childAngleRange / 2 : childAngleStep * i);
+            const childX = centerX + Math.cos(childAngle) * childRadius;
+            const childY = centerY + Math.sin(childAngle) * childRadius;
+            
+            // Draw connection line
+            ctx.strokeStyle = 'rgba(79, 195, 247, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(childX, childY);
+            ctx.stroke();
+            
+            drawNode(child, childX, childY, childAngle, childAngleStep, depth + 1);
+          });
+        }
+      }
+      
+      // Draw root node in center with overall rotation applied
+      drawNode(treeData, centerX, centerY, -Math.PI / 2 + overallRotation, Math.PI * 2, 0);
+      
+      ctx.restore();
+    }
+    
+    // ============================================================
+    // Rendering
+    // ============================================================
+    
+    function render() {
+      if (!base) return; // Not initialized yet
+      
+      const viewMode = base.params.viewMode;
+      
+      // Fade between ASCII and canvas
+      asciiOutput.style.opacity = 1 - viewMode;
+      canvas.style.opacity = viewMode;
+      
+      // Switch pointer-events: < 0.5 = text mode, >= 0.5 = canvas mode
+      const isCanvasMode = viewMode >= 0.5;
+      asciiOutput.classList.toggle('active', !isCanvasMode);
+      canvas.classList.toggle('active', isCanvasMode);
+      treeContainer.classList.toggle('scrolling', !isCanvasMode);
+      
+      if (viewMode > 0 && treeData) {
+        drawRadialTree();
+      }
+    }
+    
+    // ============================================================
+    // Actions
+    // ============================================================
+    
+    function copyToClipboard() {
+      navigator.clipboard.writeText(asciiOutput.textContent).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const oldText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#10b981';
+        setTimeout(() => {
+          btn.textContent = oldText;
+          btn.style.background = '';
+        }, 2000);
+      });
+    }
+    
+    function downloadTxt() {
+      const blob = new Blob([asciiOutput.textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const folderName = document.getElementById('folderName').textContent.replace('/', '');
+      a.download = (folderName || 'tree') + '-tree.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      if (base) {
+        base.setStatus('Downloaded!');
+        setTimeout(() => base.clearStatus(), 2000);
+      }
+    }
+    
+    function clearOutput() {
+      treeData = null;
+      lastEntries = null;
+      lastFiles = null;
+      asciiOutput.textContent = 'Drop a folder to begin...';
+      document.getElementById('folderName').textContent = '—';
+      document.getElementById('fileCount').textContent = '0';
+      document.getElementById('dirCount').textContent = '0';
+      if (base) {
+        base.clearStatus();
+        render();
+      }
+    }
+    
+    // ============================================================
+    // Initialize OmniBase
+    // ============================================================
+    
+    base = new OmniBase({
+      elements: {
+        container: container,
+        controls: document.getElementById('controls'),
+        multiscroller: document.getElementById('multiscroller')
+      },
+      sliderConfig: SLIDER_CONFIG,
+      presets: PRESETS,
+      defaultPreset: 'ASCII',
+      enablePanZoom: false,
+      aspectRatio: 1,
+      hintHtml: '<b>Drag & drop</b> a folder to visualize its structure.<br><b>View mode slider</b>: fade between ASCII and radial tree.<br><b>Presets</b>: ASCII (text), Radial (with rotation), Readable (large zoom).',
+      
+      onRender: (params, panZoom, instance) => {
+        render();
+      },
+      
+      onParamChange: (id, value, isData, instance) => {
+        render();
+      },
+      
+      onResize: (instance) => {
+        resizeCanvas();
+      }
+    });
+    
+    // Initial setup
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Load default sample
+    loadSampleTree('Teas');
+    document.getElementById('sampleSelect').value = 'Teas';
+    
+    // ============================================================
+    // Pan/Zoom for Canvas
+    // ============================================================
+    
+    canvas.addEventListener('mousedown', (e) => {
+      if (base.params.viewMode >= 0.5) {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        treeContainer.classList.add('dragging');
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = (e.clientX - lastMouseX) / camera.zoom;
+        const dy = (e.clientY - lastMouseY) / camera.zoom;
+        camera.x += dx;
+        camera.y += dy;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        render();
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+      treeContainer.classList.remove('dragging');
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      treeContainer.classList.remove('dragging');
+    });
+    
+    canvas.addEventListener('wheel', (e) => {
+      if (base.params.viewMode >= 0.5) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Zoom towards mouse position
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        const currentZoom = base.params.zoom;
+        const newZoom = Math.max(0.25, Math.min(3, currentZoom * zoomFactor));
+        
+        // Adjust camera position to zoom towards mouse
+        const scale = newZoom / currentZoom;
+        camera.x = mouseX - scale * (mouseX - camera.x - canvas.width / 2) - canvas.width / 2;
+        camera.y = mouseY - scale * (mouseY - camera.y - canvas.height / 2) - canvas.height / 2;
+        
+        // Update zoom slider
+        base.updateSlider('zoom', newZoom, false);
+        
+        render();
+      }
+    }, { passive: false });
+    
+  })();
+  </script>
+</body>
+</html>

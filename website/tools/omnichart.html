@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniChart — Unified Charting</title>
+  <link rel="icon" type="image/x-icon" href="../wheel.ico">
+  <script src="../js/utilities/nav.js"></script>
+  <link rel="stylesheet" href="omnibase.css">
+</head>
+<body>
+  <header class="header">
+    <h1>OmniChart</h1>
+    <p class="subtitle">One engine, all charts. Drag to pan, scroll to zoom, use sliders to morph.</p>
+    <div class="header-right">
+      <button class="legend-toggle active" id="legend-toggle">🗝</button>
+    </div>
+  </header>
+  
+  <div class="layout">
+    <div class="chart-container" id="chart-container">
+      <svg id="chart" viewBox="0 0 800 650" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+    <div class="controls-wrapper">
+      <div class="multiscroller-strip" id="multiscroller"></div>
+      <div class="controls" id="controls"></div>
+    </div>
+  </div>
+
+  <script src="omnichart.js"></script>
+  <script src="omnibase.js"></script>
+  <script>
+  (function() {
+    // ============================================================
+    // Chart-Specific Configuration
+    // ============================================================
+    
+    const SLIDER_CONFIG = [
+      { group: 'Presets', id: 'presets', abbrev: 'Pre', type: 'presets' },
+      { group: 'Data', id: 'data', abbrev: 'Dat', sliders: [
+        { id: 'numCategories', label: 'months', min: 1, max: 12, step: 1, default: 6, isData: true, dataValue: 6 },
+        { id: 'numProducts', label: 'products', min: 1, max: 5, step: 1, default: 3 },
+        { id: 'focusProduct', label: 'focusProduct', min: 1, max: 5, step: 1, default: 1 },
+        { id: 'normalize', label: 'normalize', min: 0, max: 1, step: 0.01, default: 0 },
+      ]},
+      { group: 'Global shape', id: 'shape', abbrev: 'Shp', sliders: [
+        { id: 'bend', label: 'bend', min: 0, max: 6.283, step: 0.01, default: 0 },
+        { id: 'bendStack', label: 'bendStack', min: 0, max: 1, step: 0.01, default: 0 },
+        { id: 'gridiness', label: 'gridiness', min: 0, max: 1, step: 0.01, default: 0 },
+        { id: 'rotation', label: 'rotation', min: 0, max: 6.283, step: 0.01, default: 0 },
+        { id: 'categoryRotation', label: 'categoryRotation', min: 0, max: 6.283, step: 0.01, default: 0 },
+      ]},
+      { group: 'Segment', id: 'segment', abbrev: 'Seg', sliders: [
+        { id: 'segmentWidth', label: 'segmentWidth', min: 0, max: 1, step: 0.01, default: 0.8 },
+        { id: 'segmentGap', label: 'segmentGap', min: 0, max: 0.5, step: 0.01, default: 0.08 },
+        { id: 'flatness', label: 'flatness', min: 0, max: 1, step: 0.01, default: 1 },
+        { id: 'stack', label: 'stack', min: 0, max: 1, step: 0.01, default: 1 },
+        { id: 'baseline', label: 'baseline', min: 0, max: 1, step: 0.01, default: 0.5 },
+        { id: 'alignment', label: 'alignment', min: 0, max: 1, step: 0.01, default: 0 },
+        { id: 'curviness', label: 'curviness', min: 0, max: 1, step: 0.01, default: 0 },
+      ]},
+      { group: 'Style', id: 'style', abbrev: 'Sty', sliders: [
+        { id: 'fillOpacity', label: 'fillOpacity', min: 0, max: 1, step: 0.01, default: 1 },
+        { id: 'strokeWidth', label: 'strokeWidth', min: 0, max: 3, step: 0.1, default: 0 },
+        { id: 'topWidth', label: 'topWidth', min: 0, max: 5, step: 0.1, default: 0 },
+        { id: 'zoom', label: 'zoom', min: 0.25, max: 2, step: 0.01, default: 1 },
+      ]},
+    ];
+    
+    // ============================================================
+    // State
+    // ============================================================
+    
+    let numCategories = 6;
+    let data = OmniChart.generateData(numCategories);
+    
+    const svg = document.getElementById('chart');
+    const legendEl = document.getElementById('chart-legend');
+    
+    // ============================================================
+    // Legend Management
+    // ============================================================
+    
+    const updateLegend = (params, showLegend) => {
+      const drawOrder = OmniChart.getDrawOrder(params.focusProduct, params.numProducts);
+      
+      legendEl.innerHTML = '';
+      
+      for (const origIdx of drawOrder) {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        
+        const colorBox = document.createElement('div');
+        colorBox.className = 'legend-color';
+        colorBox.style.backgroundColor = OmniChart.COLORS[origIdx % OmniChart.COLORS.length];
+        
+        const label = document.createElement('span');
+        label.className = 'legend-label';
+        label.textContent = data.series[origIdx].name;
+        
+        item.appendChild(colorBox);
+        item.appendChild(label);
+        legendEl.appendChild(item);
+      }
+      
+      legendEl.classList.toggle('hidden', !showLegend);
+    };
+    
+    // ============================================================
+    // Initialize OmniBase
+    // ============================================================
+    
+    const base = new OmniBase({
+      elements: {
+        svg: svg,
+        container: document.getElementById('chart-container'),
+        controls: document.getElementById('controls'),
+        multiscroller: document.getElementById('multiscroller'),
+        legendToggle: document.getElementById('legend-toggle'),
+        legend: legendEl
+      },
+      sliderConfig: SLIDER_CONFIG,
+      presets: OmniChart.PRESETS,
+      defaultPreset: 'Stacked',
+      hintHtml: 'Drag to pan. Scroll to zoom.<br><b>bend</b>: curves shared baseline<br><b>bendStack</b>: bends each stack into donut<br><b>gridiness</b>: moves centers to grid<br><b>curviness</b>: scales edge bends (0=straight)',
+      
+      onRender: (params, panZoom, instance) => {
+        // Merge base params with chart-specific params
+        const fullParams = {
+          ...params,
+          focusProduct: params.focusProduct || 1,
+          numProducts: params.numProducts || 3
+        };
+        
+        OmniChart.render(svg, data, fullParams, panZoom);
+        updateLegend(fullParams, instance.showLegend);
+      },
+      
+      onParamChange: (id, value, isData) => {
+        if (id === 'numCategories') {
+          numCategories = value;
+          data = OmniChart.generateData(numCategories);
+        }
+      },
+      
+      onLegendToggle: (showLegend) => {
+        updateLegend(base.getParams(), showLegend);
+      }
+    });
+    
+    // Set initial data-related params
+    base.setParam('focusProduct', 1);
+    base.setParam('numProducts', 3);
+    
+  })();
+  </script>
+</body>
+</html>

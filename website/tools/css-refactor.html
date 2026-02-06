@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CSS Refactor Tool</title>
+  <link rel="icon" type="image/x-icon" href="../wheel.ico">
+  <script src="../js/utilities/nav.js"></script>  
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap');
 
@@ -58,6 +60,10 @@
       font-weight: 600;
       letter-spacing: -0.02em;
       color: var(--text-primary);
+    }
+
+    .indented {
+      margin-left:80px;
     }
 
     h1 span { color: var(--accent); }
@@ -733,7 +739,7 @@
 <body>
   <div class="app">
     <header>
-      <h1>CSS <span>Refactor</span> Tool</h1>
+      <h1 class="indented">CSS <span>Refactor</span> Tool</h1>
       <div class="controls">
         <label class="toggle" id="togglePromotion">
           <div class="toggle-track"></div>

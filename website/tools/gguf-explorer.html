@@ -80,61 +80,13 @@
       cursor: grabbing;
     }
     
-    .toggle-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      user-select: none;
-      padding: 4px 0;
-    }
-    
-    .toggle-item input {
-      display: none;
-    }
-    
-    .toggle-slider {
-      width: 36px;
-      height: 20px;
-      background: #3f3f46;
-      border-radius: 10px;
-      position: relative;
-      transition: background 0.2s ease;
-      flex-shrink: 0;
-    }
-    
-    .toggle-slider::after {
-      content: '';
-      position: absolute;
-      width: 14px;
-      height: 14px;
-      background: #e4e4e7;
-      border-radius: 50%;
-      top: 3px;
-      left: 3px;
-      transition: transform 0.2s ease;
-    }
-    
-    .toggle-item input:checked + .toggle-slider {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    }
-    
-    .toggle-item input:checked + .toggle-slider::after {
-      transform: translateX(16px);
-    }
-    
-    .toggle-label {
-      font-size: 11px;
-      color: #888;
-    }
-    
     .model-stats {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       font-size: 11px;
       color: #888;
-      margin-bottom: 12px;
+      margin-top: 12px;
     }
     
     .stat-item {
@@ -145,6 +97,31 @@
     .stat-value {
       color: #4fc3f7;
       font-weight: 600;
+    }
+
+    .info-panel {
+      background: #16213e;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 11px;
+      color: #888;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    .info-panel p {
+      margin: 4px 0;
+    }
+
+    .info-panel strong {
+      color: #4fc3f7;
+    }
+
+    .reload-note {
+      font-size: 10px;
+      color: #666;
+      margin-top: 4px;
+      font-style: italic;
     }
   </style>
 </head>
@@ -163,131 +140,20 @@
     </div>
 
     <div class="controls-wrapper">
-      <div class="multiscroller-strip">
-        <button class="strip-btn" data-section="load">LOAD</button>
-        <button class="strip-btn" data-section="view">VIEW</button>
-        <button class="strip-btn" data-section="info">INFO</button>
-      </div>
-
-      <div class="controls">
-        <!-- LOAD SECTION -->
-        <div class="control-group" id="section-load">
-          <h3>Load Model</h3>
-          
-          <div class="file-drop" id="fileDrop">
-            <div class="file-drop-icon">📁</div>
-            <div>Drop GGUF file here or click to select</div>
-            <div style="font-size: 9px; color: #555; margin-top: 4px;">
-              Only header & metadata loaded (not weights)
-            </div>
-          </div>
-          <input type="file" id="fileInput" accept=".gguf" style="display: none;">
-          
-          <div class="status-message" id="statusMessage"></div>
-          
-          <div class="model-stats" id="modelStats" style="display: none;">
-            <div class="stat-item">
-              <span>Architecture:</span>
-              <span class="stat-value" id="statArch">-</span>
-            </div>
-            <div class="stat-item">
-              <span>Layers:</span>
-              <span class="stat-value" id="statLayers">-</span>
-            </div>
-            <div class="stat-item">
-              <span>Tensors:</span>
-              <span class="stat-value" id="statTensors">-</span>
-            </div>
-            <div class="stat-item">
-              <span>File Size:</span>
-              <span class="stat-value" id="statSize">-</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- VIEW SECTION -->
-        <div class="control-group" id="section-view">
-          <h3>Visualization</h3>
-          
-          <div class="control">
-            <label>
-              <span>View Mode (Text→Canvas)</span>
-              <span id="viewModeValue">0.0</span>
-            </label>
-            <input type="range" id="viewMode" min="0" max="1" step="0.01" value="0">
-          </div>
-          
-          <div class="control">
-            <label>
-              <span>Block Spacing</span>
-              <span id="blockSpacingValue">20</span>
-            </label>
-            <input type="range" id="blockSpacing" min="10" max="50" value="20">
-          </div>
-          
-          <div class="control">
-            <label>
-              <span>Tensor Size Scale</span>
-              <span id="tensorScaleValue">1.0</span>
-            </label>
-            <input type="range" id="tensorScale" min="0.5" max="2.0" step="0.1" value="1.0">
-          </div>
-          
-          <div class="control">
-            <label>
-              <span>Max Tensors</span>
-              <span id="maxTensorsValue">500</span>
-            </label>
-            <input type="range" id="maxTensors" min="50" max="500" step="50" value="500">
-          </div>
-          
-          <div class="control">
-            <label>
-              <span>Show Labels</span>
-            </label>
-            <div class="presets">
-              <button class="preset-btn active" data-labels="all">All</button>
-              <button class="preset-btn" data-labels="blocks">Blocks Only</button>
-              <button class="preset-btn" data-labels="none">None</button>
-            </div>
-          </div>
-          
-          <div class="control">
-            <button class="btn" id="resetView">Reset View</button>
-          </div>
-        </div>
-
-        <!-- INFO SECTION -->
-        <div class="control-group" id="section-info">
-          <h3>Model Information</h3>
-          
-          <div class="info-panel visible" id="infoPanel">
-            <div id="infoContent">
-              <p>Load a GGUF file to see model details.</p>
-            </div>
-          </div>
-          
-          <div id="actionButtons" style="display: none;">
-            <div class="control">
-              <button class="btn" id="copyBtn">Copy Metadata</button>
-            </div>
-            <div class="control">
-              <button class="btn secondary" id="downloadBtn">Download Metadata</button>
-            </div>
-          </div>
-        </div>
-        
-        <div class="hint">
-          <strong>Navigation:</strong> Drag to pan, scroll to zoom. Tensors are sized by log(dimensions) for better visualization.
-        </div>
-      </div>
+      <div class="multiscroller-strip" id="multiscroller"></div>
+      <div class="controls" id="controls"></div>
     </div>
   </div>
 
+  <script src="warped-polygon.js"></script>
+  <script src="omnibase.js"></script>
   <script>
-    // ============================================
-    // GGUF Reader Classes & Utilities
-    // ============================================
+  (function() {
+    'use strict';
+
+    // ============================================================
+    // GGUF PARSER - Static parsing utilities
+    // ============================================================
     
     const GGUFValueType = {
       UINT8: 0, INT8: 1, UINT16: 2, INT16: 3,
@@ -374,167 +240,313 @@
       }
     }
     
-    function getValueTypeSize(type) {
-      const sizes = {
-        [GGUFValueType.UINT8]: 1,
-        [GGUFValueType.INT8]: 1,
-        [GGUFValueType.UINT16]: 2,
-        [GGUFValueType.INT16]: 2,
-        [GGUFValueType.UINT32]: 4,
-        [GGUFValueType.INT32]: 4,
-        [GGUFValueType.FLOAT32]: 4,
-        [GGUFValueType.BOOL]: 1,
-        [GGUFValueType.UINT64]: 8,
-        [GGUFValueType.INT64]: 8,
-        [GGUFValueType.FLOAT64]: 8
-      };
-      return sizes[type] || -1; // -1 for variable-size types (STRING, ARRAY)
-    }
-    
-    async function readValue(reader, offset, type) {
-      switch (type) {
-        case GGUFValueType.UINT8:
-          return { value: await reader.getUint8(offset), nextOffset: offset + 1 };
-        case GGUFValueType.INT8:
-          return { value: await reader.getInt8(offset), nextOffset: offset + 1 };
-        case GGUFValueType.UINT16:
-          return { value: await reader.getUint16(offset, true), nextOffset: offset + 2 };
-        case GGUFValueType.INT16:
-          return { value: await reader.getInt16(offset, true), nextOffset: offset + 2 };
-        case GGUFValueType.UINT32:
-          return { value: await reader.getUint32(offset, true), nextOffset: offset + 4 };
-        case GGUFValueType.INT32:
-          return { value: await reader.getInt32(offset, true), nextOffset: offset + 4 };
-        case GGUFValueType.FLOAT32:
-          return { value: await reader.getFloat32(offset, true), nextOffset: offset + 4 };
-        case GGUFValueType.BOOL:
-          const boolVal = await reader.getUint8(offset);
-          return { value: boolVal !== 0, nextOffset: offset + 1 };
-        case GGUFValueType.UINT64:
-          return { value: Number(await reader.getBigUint64(offset, true)), nextOffset: offset + 8 };
-        case GGUFValueType.INT64:
-          return { value: Number(await reader.getBigInt64(offset, true)), nextOffset: offset + 8 };
-        case GGUFValueType.FLOAT64:
-          return { value: await reader.getFloat64(offset, true), nextOffset: offset + 8 };
-        case GGUFValueType.STRING:
-          const len = Number(await reader.getBigUint64(offset, true));
-          offset += 8;
-          if (len > 10 * 1024 * 1024) throw new Error(`String too large: ${len}`);
-          const str = await reader.getString(offset, len);
-          return { value: str, nextOffset: offset + len };
-        case GGUFValueType.ARRAY:
-          const arrayType = await reader.getUint32(offset, true);
-          offset += 4;
-          const arrayLen = Number(await reader.getBigUint64(offset, true));
-          offset += 8;
-          
-          if (arrayLen > 10000) {
-            const itemSize = getValueTypeSize(arrayType);
-            if (itemSize > 0) {
-              offset += arrayLen * itemSize;
-            } else {
-              for (let i = 0; i < arrayLen; i++) {
-                const item = await readValue(reader, offset, arrayType);
-                offset = item.nextOffset;
-              }
-            }
-            return { value: `[Array: ${arrayLen} items]`, nextOffset: offset };
-          }
-          
-          const array = [];
-          for (let i = 0; i < arrayLen; i++) {
-            const item = await readValue(reader, offset, arrayType);
-            if (i < 100) array.push(item.value);
-            offset = item.nextOffset;
-          }
-          return { value: array, nextOffset: offset };
-        default:
-          throw new Error(`Unknown GGUF value type: ${type}`);
-      }
-    }
-    
-    async function parseGGUF(reader, maxTensors = 500) {
-      let offset = 0;
-      
-      // Read magic & version
-      const magic = String.fromCharCode(
-        await reader.getUint8(offset++),
-        await reader.getUint8(offset++),
-        await reader.getUint8(offset++),
-        await reader.getUint8(offset++)
-      );
-      if (magic !== 'GGUF') throw new Error('Not a valid GGUF file');
-      
-      const version = await reader.getUint32(offset, true);
-      offset += 4;
-      const tensorCount = Number(await reader.getBigUint64(offset, true));
-      offset += 8;
-      const metadataCount = Number(await reader.getBigUint64(offset, true));
-      offset += 8;
-      
-      // Read metadata
-      const metadata = [];
-      for (let i = 0; i < metadataCount; i++) {
-        try {
-          const keyLen = Number(await reader.getBigUint64(offset, true));
-          offset += 8;
-          if (keyLen > 10000) {
-            throw new Error(`Key ${i} length too long: ${keyLen} at offset ${offset - 8}`);
-          }
-          const key = await reader.getString(offset, keyLen);
-          offset += keyLen;
-          const valueType = await reader.getUint32(offset, true);
-          offset += 4;
-          const valueResult = await readValue(reader, offset, valueType);
-          metadata.push({ key, valueType, value: valueResult.value });
-          offset = valueResult.nextOffset;
-        } catch (err) {
-          console.error(`Error reading metadata item ${i}/${metadataCount}:`, err);
-          throw new Error(`Failed at metadata item ${i}: ${err.message}`);
-        }
+    class GGUFParser {
+      static getValueTypeSize(type) {
+        const sizes = {
+          [GGUFValueType.UINT8]: 1,
+          [GGUFValueType.INT8]: 1,
+          [GGUFValueType.UINT16]: 2,
+          [GGUFValueType.INT16]: 2,
+          [GGUFValueType.UINT32]: 4,
+          [GGUFValueType.INT32]: 4,
+          [GGUFValueType.FLOAT32]: 4,
+          [GGUFValueType.BOOL]: 1,
+          [GGUFValueType.UINT64]: 8,
+          [GGUFValueType.INT64]: 8,
+          [GGUFValueType.FLOAT64]: 8
+        };
+        return sizes[type] || -1;
       }
       
-      // Read tensor info
-      const tensors = [];
-      const maxToRead = Math.min(tensorCount, maxTensors);
-      for (let i = 0; i < maxToRead; i++) {
-        try {
-          const nameLen = Number(await reader.getBigUint64(offset, true));
-          offset += 8;
-          if (nameLen > 10000) {
-            console.warn(`Tensor ${i} name too long: ${nameLen}, stopping tensor read`);
-            break;
-          }
-          const name = await reader.getString(offset, nameLen);
-          offset += nameLen;
-          const nDims = await reader.getUint32(offset, true);
-          offset += 4;
-          if (nDims > 10) {
-            console.warn(`Tensor ${i} too many dims: ${nDims}, stopping tensor read`);
-            break;
-          }
-          const dimensions = [];
-          for (let j = 0; j < nDims; j++) {
-            dimensions.push(Number(await reader.getBigUint64(offset, true)));
+      static async readValue(reader, offset, type) {
+        switch (type) {
+          case GGUFValueType.UINT8:
+            return { value: await reader.getUint8(offset), nextOffset: offset + 1 };
+          case GGUFValueType.INT8:
+            return { value: await reader.getInt8(offset), nextOffset: offset + 1 };
+          case GGUFValueType.UINT16:
+            return { value: await reader.getUint16(offset, true), nextOffset: offset + 2 };
+          case GGUFValueType.INT16:
+            return { value: await reader.getInt16(offset, true), nextOffset: offset + 2 };
+          case GGUFValueType.UINT32:
+            return { value: await reader.getUint32(offset, true), nextOffset: offset + 4 };
+          case GGUFValueType.INT32:
+            return { value: await reader.getInt32(offset, true), nextOffset: offset + 4 };
+          case GGUFValueType.FLOAT32:
+            return { value: await reader.getFloat32(offset, true), nextOffset: offset + 4 };
+          case GGUFValueType.BOOL:
+            const boolVal = await reader.getUint8(offset);
+            return { value: boolVal !== 0, nextOffset: offset + 1 };
+          case GGUFValueType.UINT64:
+            return { value: Number(await reader.getBigUint64(offset, true)), nextOffset: offset + 8 };
+          case GGUFValueType.INT64:
+            return { value: Number(await reader.getBigInt64(offset, true)), nextOffset: offset + 8 };
+          case GGUFValueType.FLOAT64:
+            return { value: await reader.getFloat64(offset, true), nextOffset: offset + 8 };
+          case GGUFValueType.STRING:
+            const len = Number(await reader.getBigUint64(offset, true));
             offset += 8;
-          }
-          const type = await reader.getUint32(offset, true);
-          offset += 4;
-          const tensorOffset = Number(await reader.getBigUint64(offset, true));
-          offset += 8;
-          tensors.push({ name, dimensions, type, offset: tensorOffset });
-        } catch (err) {
-          console.warn(`Error reading tensor ${i}, stopping:`, err);
-          break;
+            if (len > 10 * 1024 * 1024) throw new Error(`String too large: ${len}`);
+            const str = await reader.getString(offset, len);
+            return { value: str, nextOffset: offset + len };
+          case GGUFValueType.ARRAY:
+            const arrayType = await reader.getUint32(offset, true);
+            offset += 4;
+            const arrayLen = Number(await reader.getBigUint64(offset, true));
+            offset += 8;
+            
+            if (arrayLen > 10000) {
+              const itemSize = GGUFParser.getValueTypeSize(arrayType);
+              if (itemSize > 0) {
+                offset += arrayLen * itemSize;
+              } else {
+                for (let i = 0; i < arrayLen; i++) {
+                  const item = await GGUFParser.readValue(reader, offset, arrayType);
+                  offset = item.nextOffset;
+                }
+              }
+              return { value: `[Array: ${arrayLen} items]`, nextOffset: offset };
+            }
+            
+            const array = [];
+            for (let i = 0; i < arrayLen; i++) {
+              const item = await GGUFParser.readValue(reader, offset, arrayType);
+              if (i < 100) array.push(item.value);
+              offset = item.nextOffset;
+            }
+            return { value: array, nextOffset: offset };
+          default:
+            throw new Error(`Unknown GGUF value type: ${type}`);
         }
       }
       
-      return { version, tensorCount, metadataCount, metadata, tensors };
+      static async parseGGUF(reader, maxTensors = 500) {
+        let offset = 0;
+        
+        // Read magic & version
+        const magic = String.fromCharCode(
+          await reader.getUint8(offset++),
+          await reader.getUint8(offset++),
+          await reader.getUint8(offset++),
+          await reader.getUint8(offset++)
+        );
+        if (magic !== 'GGUF') throw new Error('Not a valid GGUF file');
+        
+        const version = await reader.getUint32(offset, true);
+        offset += 4;
+        const tensorCount = Number(await reader.getBigUint64(offset, true));
+        offset += 8;
+        const metadataCount = Number(await reader.getBigUint64(offset, true));
+        offset += 8;
+        
+        // Read metadata
+        const metadata = [];
+        for (let i = 0; i < metadataCount; i++) {
+          try {
+            const keyLen = Number(await reader.getBigUint64(offset, true));
+            offset += 8;
+            if (keyLen > 10000) {
+              throw new Error(`Key ${i} length too long: ${keyLen} at offset ${offset - 8}`);
+            }
+            const key = await reader.getString(offset, keyLen);
+            offset += keyLen;
+            const valueType = await reader.getUint32(offset, true);
+            offset += 4;
+            const valueResult = await GGUFParser.readValue(reader, offset, valueType);
+            metadata.push({ key, valueType, value: valueResult.value });
+            offset = valueResult.nextOffset;
+          } catch (err) {
+            console.error(`Error reading metadata item ${i}/${metadataCount}:`, err);
+            throw new Error(`Failed at metadata item ${i}: ${err.message}`);
+          }
+        }
+        
+        // Read tensor info (metadata only, never the actual tensor data)
+        const tensors = [];
+        const maxToRead = Math.min(tensorCount, maxTensors);
+        for (let i = 0; i < maxToRead; i++) {
+          try {
+            const nameLen = Number(await reader.getBigUint64(offset, true));
+            offset += 8;
+            if (nameLen > 10000) {
+              console.warn(`Tensor ${i} name too long: ${nameLen}, stopping tensor read`);
+              break;
+            }
+            const name = await reader.getString(offset, nameLen);
+            offset += nameLen;
+            const nDims = await reader.getUint32(offset, true);
+            offset += 4;
+            if (nDims > 10) {
+              console.warn(`Tensor ${i} too many dims: ${nDims}, stopping tensor read`);
+              break;
+            }
+            const dimensions = [];
+            for (let j = 0; j < nDims; j++) {
+              dimensions.push(Number(await reader.getBigUint64(offset, true)));
+              offset += 8;
+            }
+            const type = await reader.getUint32(offset, true);
+            offset += 4;
+            const tensorOffset = Number(await reader.getBigUint64(offset, true));
+            offset += 8;
+            tensors.push({ name, dimensions, type, offset: tensorOffset });
+          } catch (err) {
+            console.warn(`Error reading tensor ${i}, stopping:`, err);
+            break;
+          }
+        }
+        
+        return { version, tensorCount, metadataCount, metadata, tensors };
+      }
     }
+
+    // ============================================================
+    // MODEL DATA - Data model and formatters
+    // ============================================================
     
-    // ============================================
-    // Canvas Rendering
-    // ============================================
+    class ModelData {
+      constructor(file, parsedData) {
+        this.file = file;
+        this.version = parsedData.version;
+        this.tensorCount = parsedData.tensorCount;
+        this.metadataCount = parsedData.metadataCount;
+        this.metadata = parsedData.metadata;
+        this.tensors = parsedData.tensors;
+      }
+      
+      formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+      
+      formatNumber(num) {
+        if (num >= 1000000) {
+          return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+          return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toLocaleString();
+      }
+      
+      formatMetadataValue(value) {
+        if (Array.isArray(value)) {
+          if (value.length <= 5) {
+            return `[${value.join(', ')}]`;
+          } else {
+            return `[${value.slice(0, 5).join(', ')}, ... (${value.length} items)]`;
+          }
+        } else if (typeof value === 'string' && value.startsWith('[Array:')) {
+          return value;
+        }
+        return String(value);
+      }
+      
+      getStats() {
+        const archMeta = this.metadata.find(m => 
+          m.key === 'general.architecture' || m.key.includes('architecture'));
+        const arch = archMeta ? archMeta.value : 'unknown';
+        
+        const layersMeta = this.metadata.find(m => 
+          m.key.includes('block_count') || m.key.includes('n_layer'));
+        const layers = layersMeta ? layersMeta.value : 'unknown';
+        
+        return {
+          arch,
+          layers,
+          tensors: this.tensors.length,
+          totalTensors: this.tensorCount,
+          size: this.formatBytes(this.file.size)
+        };
+      }
+      
+      getInfoText() {
+        const archMeta = this.metadata.find(m => 
+          m.key === 'general.architecture' || m.key.includes('architecture'));
+        const arch = archMeta ? archMeta.value : 'unknown';
+        
+        const contextMeta = this.metadata.find(m => m.key.includes('context_length'));
+        const context = contextMeta ? contextMeta.value : 'unknown';
+        
+        const embeddingMeta = this.metadata.find(m => m.key.includes('embedding'));
+        const embedding = embeddingMeta ? embeddingMeta.value : 'unknown';
+        
+        const headsMeta = this.metadata.find(m => m.key.includes('head_count') && !m.key.includes('kv'));
+        const heads = headsMeta ? headsMeta.value : 'unknown';
+        
+        return {
+          arch,
+          context,
+          embedding,
+          heads,
+          tensorsLoaded: this.tensors.length,
+          totalTensors: this.tensorCount
+        };
+      }
+    }
+
+    // ============================================================
+    // TEXT RENDERER - Generate text output
+    // ============================================================
+    
+    class TextRenderer {
+      constructor(outputElement) {
+        this.outputElement = outputElement;
+      }
+      
+      render(modelData) {
+        const lines = [];
+        
+        // Header
+        lines.push('='.repeat(60));
+        lines.push(`GGUF MODEL: ${modelData.file.name}`);
+        lines.push('='.repeat(60));
+        lines.push('');
+        
+        // File info
+        lines.push('FILE INFO:');
+        lines.push(`  Size: ${modelData.formatBytes(modelData.file.size)}`);
+        lines.push(`  GGUF Version: ${modelData.version}`);
+        lines.push(`  Tensor Count: ${modelData.tensorCount}`);
+        lines.push(`  Metadata Items: ${modelData.metadataCount}`);
+        lines.push('');
+        
+        // Metadata
+        lines.push('METADATA:');
+        lines.push('-'.repeat(60));
+        modelData.metadata.forEach(kv => {
+          const valueStr = modelData.formatMetadataValue(kv.value);
+          lines.push(`  ${kv.key}:`);
+          if (valueStr.includes('\n') || valueStr.length > 50) {
+            valueStr.split('\n').forEach(line => {
+              lines.push(`    ${line}`);
+            });
+          } else {
+            lines.push(`    ${valueStr}`);
+          }
+        });
+        lines.push('');
+        
+        // Tensors
+        lines.push(`TENSORS (${modelData.tensors.length} of ${modelData.tensorCount}):`);
+        lines.push('-'.repeat(60));
+        modelData.tensors.forEach(tensor => {
+          const dims = tensor.dimensions.join(' × ');
+          const elements = tensor.dimensions.reduce((a, b) => a * b, 1);
+          lines.push(`  ${tensor.name}`);
+          lines.push(`    Shape: [${dims}] = ${modelData.formatNumber(elements)} elements`);
+          lines.push(`    Type: ${tensor.type}`);
+        });
+        
+        this.outputElement.textContent = lines.join('\n');
+      }
+    }
+
+    // ============================================================
+    // GGUF RENDERER - Canvas visualization
+    // ============================================================
     
     class GGUFRenderer {
       constructor(canvas) {
@@ -544,6 +556,7 @@
         this.offsetX = 0;
         this.offsetY = 0;
         this.scale = 1;
+        this.zoom = 1; // NEW: for zoom slider
         this.isDragging = false;
         this.lastX = 0;
         this.lastY = 0;
@@ -595,8 +608,14 @@
         this.canvas.addEventListener('wheel', (e) => {
           e.preventDefault();
           const delta = e.deltaY * -0.001;
-          const newScale = Math.max(0.1, Math.min(5, this.scale + delta));
-          this.scale = newScale;
+          const newZoom = Math.max(0.1, Math.min(5, this.zoom + delta));
+          this.zoom = newZoom;
+          
+          // Update zoom slider if available
+          if (window.baseInstance) {
+            window.baseInstance.updateSlider('zoom', newZoom, false);
+          }
+          
           this.draw();
         }, { passive: false });
       }
@@ -609,7 +628,13 @@
       resetView() {
         this.offsetX = 50;
         this.offsetY = 50;
-        this.scale = 1;
+        this.zoom = 1;
+        
+        // Update zoom slider
+        if (window.baseInstance) {
+          window.baseInstance.updateSlider('zoom', 1, false);
+        }
+        
         this.draw();
       }
       
@@ -626,7 +651,7 @@
         
         ctx.save();
         ctx.translate(this.offsetX, this.offsetY);
-        ctx.scale(this.scale, this.scale);
+        ctx.scale(this.scale * this.zoom, this.scale * this.zoom); // Apply zoom
         
         this.drawBlocks();
         
@@ -848,372 +873,366 @@
         if (name.match(/attn.*k|attention.*key/i)) return '#4ecdc4';
         if (name.match(/attn.*v|attention.*value/i)) return '#45b7d1';
         if (name.match(/attn.*output|attn.*o/i)) return '#96ceb4';
-        if (name.match(/ffn.*up|feed_forward.*up|mlp.*up/i)) return '#feca57';
-        if (name.match(/ffn.*down|feed_forward.*down|mlp.*down/i)) return '#ff9ff3';
-        if (name.match(/ffn.*gate|feed_forward.*gate|mlp.*gate/i)) return '#54a0ff';
-        if (name.match(/norm|ln|layernorm/i)) return '#636e72';
-        if (name.match(/embed|token|wte/i)) return '#a29bfe';
-        if (name.match(/lm_head|output/i)) return '#fd79a8';
-        return '#555';
+        if (name.match(/ffn|mlp|fc/i)) return '#ffd93d';
+        if (name.match(/norm|ln/i)) return '#a29bfe';
+        return '#6c5ce7';
+      }
+    }
+
+    // ============================================================
+    // SLIDER CONFIGURATION
+    // ============================================================
+    
+    const SLIDER_CONFIG = [
+      {
+        group: 'Load Model',
+        id: 'load',
+        abbrev: 'Load',
+        type: 'filedrop',
+        label: 'Drop GGUF file or click',
+        accept: '.gguf',
+        onDrop: (files, base) => {
+          if (files[0]) loadFile(files[0]);
+        }
+      },
+      {
+        group: 'Max Tensors',
+        id: 'maxTensors',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const container = document.createElement('div');
+          container.className = 'control';
+          
+          const labelDiv = document.createElement('label');
+          const labelSpan = document.createElement('span');
+          labelSpan.textContent = 'Max Tensors to Load';
+          const valueSpan = document.createElement('span');
+          valueSpan.id = 'maxTensorsValue';
+          valueSpan.textContent = '500';
+          labelDiv.appendChild(labelSpan);
+          labelDiv.appendChild(valueSpan);
+          
+          const slider = document.createElement('input');
+          slider.type = 'range';
+          slider.id = 'maxTensors';
+          slider.min = '50';
+          slider.max = '500';
+          slider.step = '50';
+          slider.value = '500';
+          
+          slider.addEventListener('input', (e) => {
+            valueSpan.textContent = e.target.value;
+            base.setParam('maxTensors', parseInt(e.target.value));
+          });
+          
+          container.appendChild(labelDiv);
+          container.appendChild(slider);
+          
+          const note = document.createElement('div');
+          note.className = 'reload-note';
+          note.textContent = 'Changes apply when loading next file';
+          container.appendChild(note);
+          
+          groupEl.appendChild(container);
+          
+          // Initialize param
+          base.setParam('maxTensors', 500);
+        }
+      },
+      {
+        group: 'Stats',
+        id: 'modelStats',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const stats = document.createElement('div');
+          stats.className = 'model-stats';
+          stats.id = 'modelStats';
+          stats.style.display = 'none';
+          stats.innerHTML = `
+            <div class="stat-item">
+              <span>Architecture:</span>
+              <span class="stat-value" id="statArch">-</span>
+            </div>
+            <div class="stat-item">
+              <span>Layers:</span>
+              <span class="stat-value" id="statLayers">-</span>
+            </div>
+            <div class="stat-item">
+              <span>Tensors:</span>
+              <span class="stat-value" id="statTensors">-</span>
+            </div>
+            <div class="stat-item">
+              <span>File Size:</span>
+              <span class="stat-value" id="statSize">-</span>
+            </div>
+          `;
+          groupEl.appendChild(stats);
+        }
+      },
+      {
+        group: 'Visualization',
+        id: 'viz',
+        abbrev: 'Viz',
+        sliders: [
+          { id: 'viewMode', label: 'View Mode (Text→Canvas)', min: 0, max: 1, step: 0.01, default: 0, format: 'float1' },
+          { id: 'blockSpacing', label: 'Block Spacing', min: 10, max: 50, default: 20, format: 'int' },
+          { id: 'tensorScale', label: 'Tensor Size Scale', min: 0.5, max: 2.0, step: 0.1, default: 1.0, format: 'float1' },
+          { id: 'zoom', label: 'Zoom', min: 0.1, max: 5, step: 0.1, default: 1.0, format: 'float1' }
+        ]
+      },
+      {
+        group: 'Labels',
+        id: 'showLabels',
+        type: 'select',
+        selectId: 'showLabelsSelect',
+        label: 'Show Labels',
+        options: [
+          { value: 'all', label: 'All' },
+          { value: 'blocks', label: 'Blocks Only' },
+          { value: 'none', label: 'None' }
+        ],
+        onChange: (value, base) => {
+          renderer.showLabels = value;
+          renderer.draw();
+        }
+      },
+      {
+        group: 'Reset',
+        id: 'resetView',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn';
+          btn.textContent = 'Reset View';
+          btn.addEventListener('click', () => {
+            renderer.resetView();
+          });
+          groupEl.appendChild(btn);
+        }
+      },
+      {
+        group: 'Model Information',
+        id: 'info',
+        abbrev: 'Info',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const panel = document.createElement('div');
+          panel.className = 'info-panel';
+          panel.id = 'infoPanel';
+          panel.innerHTML = '<p>Load a GGUF file to see model details.</p>';
+          groupEl.appendChild(panel);
+        }
+      },
+      {
+        group: 'Actions',
+        id: 'actions',
+        type: 'custom',
+        build: (groupEl, base) => {
+          const container = document.createElement('div');
+          container.id = 'actionButtons';
+          container.style.display = 'none';
+          
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'btn';
+          copyBtn.id = 'copyBtn';
+          copyBtn.textContent = 'Copy Metadata';
+          copyBtn.addEventListener('click', () => copyMetadata());
+          
+          const downloadBtn = document.createElement('button');
+          downloadBtn.className = 'btn secondary';
+          downloadBtn.id = 'downloadBtn';
+          downloadBtn.textContent = 'Download Metadata';
+          downloadBtn.addEventListener('click', () => downloadMetadata());
+          
+          container.appendChild(copyBtn);
+          container.appendChild(downloadBtn);
+          groupEl.appendChild(container);
+        }
+      }
+    ];
+
+    // ============================================================
+    // APPLICATION STATE
+    // ============================================================
+    
+    let currentModel = null;
+    let currentFile = null;
+    
+    const canvas = document.getElementById('ggufCanvas');
+    const textOutput = document.getElementById('textOutput');
+    const canvasContainer = document.getElementById('canvasContainer');
+    
+    const renderer = new GGUFRenderer(canvas);
+    const textRenderer = new TextRenderer(textOutput);
+    
+    // ============================================================
+    // FILE LOADING
+    // ============================================================
+    
+    async function loadFile(file) {
+      try {
+        base.setStatus('Loading GGUF file...', false);
+        
+        const reader = new DynamicFileReader(file);
+        const maxTensors = base.getParams().maxTensors || 500;
+        const parsedData = await GGUFParser.parseGGUF(reader, maxTensors);
+        
+        currentModel = new ModelData(file, parsedData);
+        currentFile = file;
+        
+        // Update UI
+        updateStats(currentModel);
+        updateInfoPanel(currentModel);
+        textRenderer.render(currentModel);
+        renderer.setData(currentModel);
+        
+        // Show action buttons
+        document.getElementById('actionButtons').style.display = 'block';
+        
+        base.clearStatus();
+        
+        // Trigger render if in canvas mode
+        const viewMode = base.getParams().viewMode || 0;
+        if (viewMode > 0) {
+          renderer.draw();
+        }
+        
+      } catch (err) {
+        console.error('Error loading GGUF:', err);
+        base.setStatus('Error: ' + err.message, true);
       }
     }
     
-    // ============================================
-    // UI Controller
-    // ============================================
+    function updateStats(modelData) {
+      const stats = modelData.getStats();
+      const statsEl = document.getElementById('modelStats');
+      
+      if (statsEl) {
+        statsEl.style.display = 'grid';
+        document.getElementById('statArch').textContent = stats.arch;
+        document.getElementById('statLayers').textContent = stats.layers;
+        document.getElementById('statTensors').textContent = `${stats.tensors} / ${stats.totalTensors}`;
+        document.getElementById('statSize').textContent = stats.size;
+      }
+    }
     
-    class UIController {
-      constructor() {
-        this.renderer = new GGUFRenderer(document.getElementById('ggufCanvas'));
-        this.currentData = null;
-        this.currentFile = null;
-        this.textOutput = document.getElementById('textOutput');
-        this.canvas = document.getElementById('ggufCanvas');
-        this.canvasContainer = document.getElementById('canvasContainer');
-        
-        this.initFileHandling();
-        this.initControls();
-        this.initMultiscroller();
-        this.initLayout();
-      }
+    function updateInfoPanel(modelData) {
+      const info = modelData.getInfoText();
+      const panel = document.getElementById('infoPanel');
       
-      initFileHandling() {
-        const fileDrop = document.getElementById('fileDrop');
-        const fileInput = document.getElementById('fileInput');
-        
-        fileDrop.addEventListener('click', () => fileInput.click());
-        
-        fileDrop.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          fileDrop.classList.add('dragover');
-        });
-        
-        fileDrop.addEventListener('dragleave', () => {
-          fileDrop.classList.remove('dragover');
-        });
-        
-        fileDrop.addEventListener('drop', (e) => {
-          e.preventDefault();
-          fileDrop.classList.remove('dragover');
-          const file = e.dataTransfer.files[0];
-          if (file) this.loadFile(file);
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-          const file = e.target.files[0];
-          if (file) this.loadFile(file);
-        });
-      }
-      
-      async loadFile(file) {
-        const status = document.getElementById('statusMessage');
-        status.textContent = 'Loading...';
-        status.className = 'status-message';
-        
-        try {
-          const reader = new DynamicFileReader(file);
-          const maxTensors = parseInt(document.getElementById('maxTensors').value);
-          const data = await parseGGUF(reader, maxTensors);
-          
-          this.currentFile = file;
-          this.currentData = data;
-          this.renderer.setData(data);
-          
-          this.updateStats(file, data);
-          this.updateInfo(data);
-          this.generateTextOutput(file, data);
-          
-          status.textContent = `✓ Loaded ${data.tensors.length} tensors`;
-          status.className = 'status-message';
-          
-          document.getElementById('actionButtons').style.display = 'block';
-        } catch (err) {
-          status.textContent = `Error: ${err.message}`;
-          status.className = 'status-message error';
-          console.error(err);
-        }
-      }
-      
-      updateStats(file, data) {
-        const stats = document.getElementById('modelStats');
-        stats.style.display = 'grid';
-        
-        // Extract architecture
-        const archMeta = data.metadata.find(m => m.key === 'general.architecture');
-        const arch = archMeta ? String(archMeta.value) : 'unknown';
-        
-        // Count layers
-        const layerMatch = data.tensors
-          .map(t => t.name.match(/(?:blk|layer|block|h)\.(\d+)/i))
-          .filter(m => m);
-        const maxLayer = layerMatch.length ? Math.max(...layerMatch.map(m => parseInt(m[1]))) : 0;
-        
-        document.getElementById('statArch').textContent = arch;
-        document.getElementById('statLayers').textContent = maxLayer + 1;
-        document.getElementById('statTensors').textContent = data.tensorCount;
-        document.getElementById('statSize').textContent = this.formatBytes(file.size);
-      }
-      
-      updateInfo(data) {
-        const info = document.getElementById('infoContent');
-        
-        // Extract key metadata
-        const archMeta = data.metadata.find(m => m.key === 'general.architecture');
-        const arch = archMeta ? String(archMeta.value) : 'unknown';
-        
-        const contextMeta = data.metadata.find(m => m.key.includes('context_length'));
-        const context = contextMeta ? contextMeta.value : 'unknown';
-        
-        const embeddingMeta = data.metadata.find(m => m.key.includes('embedding_length'));
-        const embedding = embeddingMeta ? embeddingMeta.value : 'unknown';
-        
-        const headsMeta = data.metadata.find(m => m.key.includes('head_count') && !m.key.includes('kv'));
-        const heads = headsMeta ? headsMeta.value : 'unknown';
-        
-        info.innerHTML = `
-          <p><strong>Architecture:</strong> ${arch}</p>
-          <p><strong>Context Length:</strong> ${context}</p>
-          <p><strong>Embedding Dim:</strong> ${embedding}</p>
-          <p><strong>Attention Heads:</strong> ${heads}</p>
+      if (panel) {
+        panel.innerHTML = `
+          <p><strong>Architecture:</strong> ${info.arch}</p>
+          <p><strong>Context Length:</strong> ${info.context}</p>
+          <p><strong>Embedding Dim:</strong> ${info.embedding}</p>
+          <p><strong>Attention Heads:</strong> ${info.heads}</p>
           <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
-            <strong>Tensors:</strong> ${data.tensors.length} of ${data.tensorCount} loaded
+            <strong>Tensors:</strong> ${info.tensorsLoaded} of ${info.totalTensors} loaded
           </p>
         `;
       }
-      
-      generateTextOutput(file, data) {
-        const lines = [];
-        
-        // Header
-        lines.push('='.repeat(60));
-        lines.push(`GGUF MODEL: ${file.name}`);
-        lines.push('='.repeat(60));
-        lines.push('');
-        
-        // File info
-        lines.push('FILE INFO:');
-        lines.push(`  Size: ${this.formatBytes(file.size)}`);
-        lines.push(`  GGUF Version: ${data.version}`);
-        lines.push(`  Tensor Count: ${data.tensorCount}`);
-        lines.push(`  Metadata Items: ${data.metadataCount}`);
-        lines.push('');
-        
-        // Metadata
-        lines.push('METADATA:');
-        lines.push('-'.repeat(60));
-        data.metadata.forEach(kv => {
-          const valueStr = this.formatMetadataValue(kv.value);
-          lines.push(`  ${kv.key}:`);
-          if (valueStr.includes('\n') || valueStr.length > 50) {
-            valueStr.split('\n').forEach(line => {
-              lines.push(`    ${line}`);
-            });
-          } else {
-            lines.push(`    ${valueStr}`);
-          }
-        });
-        lines.push('');
-        
-        // Tensors
-        lines.push(`TENSORS (${data.tensors.length} of ${data.tensorCount}):`);
-        lines.push('-'.repeat(60));
-        data.tensors.forEach(tensor => {
-          const dims = tensor.dimensions.join(' × ');
-          const elements = tensor.dimensions.reduce((a, b) => a * b, 1);
-          lines.push(`  ${tensor.name}`);
-          lines.push(`    Shape: [${dims}] = ${this.formatNumber(elements)} elements`);
-          lines.push(`    Type: ${tensor.type}`);
-        });
-        
-        this.textOutput.textContent = lines.join('\n');
-      }
-      
-      formatMetadataValue(value) {
-        if (Array.isArray(value)) {
-          if (value.length <= 5) {
-            return `[${value.join(', ')}]`;
-          } else {
-            return `[${value.slice(0, 5).join(', ')}, ... (${value.length} items)]`;
-          }
-        } else if (typeof value === 'string' && value.startsWith('[Array:')) {
-          return value;
-        }
-        return String(value);
-      }
-      
-      initControls() {
-        // View mode slider
-        const viewMode = document.getElementById('viewMode');
-        const viewModeValue = document.getElementById('viewModeValue');
-        viewMode.addEventListener('input', (e) => {
-          const val = parseFloat(e.target.value);
-          viewModeValue.textContent = val.toFixed(1);
-          this.updateViewMode(val);
-        });
-        
-        // Block spacing
-        const blockSpacing = document.getElementById('blockSpacing');
-        const blockSpacingValue = document.getElementById('blockSpacingValue');
-        blockSpacing.addEventListener('input', (e) => {
-          const val = parseInt(e.target.value);
-          blockSpacingValue.textContent = val;
-          this.renderer.blockSpacing = val;
-          this.renderer.draw();
-        });
-        
-        // Tensor scale
-        const tensorScale = document.getElementById('tensorScale');
-        const tensorScaleValue = document.getElementById('tensorScaleValue');
-        tensorScale.addEventListener('input', (e) => {
-          const val = parseFloat(e.target.value);
-          tensorScaleValue.textContent = val.toFixed(1);
-          this.renderer.tensorScale = val;
-          this.renderer.draw();
-        });
-        
-        // Max tensors
-        const maxTensors = document.getElementById('maxTensors');
-        const maxTensorsValue = document.getElementById('maxTensorsValue');
-        maxTensors.addEventListener('input', (e) => {
-          maxTensorsValue.textContent = e.target.value;
-        });
-        
-        // Label buttons
-        document.querySelectorAll('[data-labels]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            document.querySelectorAll('[data-labels]').forEach(b => 
-              b.classList.remove('active'));
-            btn.classList.add('active');
-            this.renderer.showLabels = btn.dataset.labels;
-            this.renderer.draw();
-          });
-        });
-        
-        // Reset view
-        document.getElementById('resetView').addEventListener('click', () => {
-          this.renderer.resetView();
-        });
-        
-        // Copy button
-        document.getElementById('copyBtn').addEventListener('click', () => {
-          this.copyMetadata();
-        });
-        
-        // Download button
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-          this.downloadMetadata();
-        });
-      }
-      
-      updateViewMode(value) {
-        // Fade between text and canvas
-        this.textOutput.style.opacity = 1 - value;
-        this.canvas.style.opacity = value;
-        
-        // Switch pointer-events: < 0.5 = text mode, >= 0.5 = canvas mode
-        const isCanvasMode = value >= 0.5;
-        this.textOutput.classList.toggle('active', !isCanvasMode);
-        this.canvas.classList.toggle('active', isCanvasMode);
-        this.canvasContainer.classList.toggle('scrolling', !isCanvasMode);
-        
-        if (value > 0 && this.currentData) {
-          this.renderer.draw();
-        }
-      }
-      
-      copyMetadata() {
-        navigator.clipboard.writeText(this.textOutput.textContent).then(() => {
-          const btn = document.getElementById('copyBtn');
-          const oldText = btn.textContent;
-          btn.textContent = 'Copied!';
-          btn.style.background = '#10b981';
-          setTimeout(() => {
-            btn.textContent = oldText;
-            btn.style.background = '';
-          }, 2000);
-        });
-      }
-      
-      downloadMetadata() {
-        const blob = new Blob([this.textOutput.textContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.currentFile.name.replace('.gguf', '')}_metadata.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        const btn = document.getElementById('downloadBtn');
+    }
+    
+    function copyMetadata() {
+      navigator.clipboard.writeText(textOutput.textContent).then(() => {
+        const btn = document.getElementById('copyBtn');
         const oldText = btn.textContent;
-        btn.textContent = 'Downloaded!';
+        btn.textContent = 'Copied!';
         btn.style.background = '#10b981';
         setTimeout(() => {
           btn.textContent = oldText;
           btn.style.background = '';
-        }, 1000);
-      }
-      
-      initMultiscroller() {
-        const buttons = document.querySelectorAll('.strip-btn');
-        const controls = document.querySelector('.controls');
-        
-        buttons.forEach(btn => {
-          btn.addEventListener('click', () => {
-            const sectionId = `section-${btn.dataset.section}`;
-            const section = document.getElementById(sectionId);
-            if (section) {
-              section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          });
-        });
-        
-        // Update active button on scroll
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              const sectionName = entry.target.id.replace('section-', '');
-              buttons.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.section === sectionName);
-              });
-            }
-          });
-        }, { threshold: 0.5 });
-        
-        document.querySelectorAll('.control-group').forEach(section => {
-          observer.observe(section);
-        });
-      }
-      
-      initLayout() {
-        const updateLayout = () => {
-          const isLandscape = window.innerWidth > window.innerHeight && window.innerWidth >= 900;
-          document.body.className = isLandscape ? 'layout-landscape' : 'layout-portrait';
-        };
-        
-        updateLayout();
-        window.addEventListener('resize', updateLayout);
-      }
-      
-      formatBytes(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-      }
-      
-      formatNumber(num) {
-        if (num >= 1000000) {
-          return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-          return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toLocaleString();
-      }
+        }, 2000);
+      });
     }
     
-    // Initialize
-    new UIController();
+    function downloadMetadata() {
+      if (!currentFile) return;
+      
+      const blob = new Blob([textOutput.textContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentFile.name.replace('.gguf', '')}_metadata.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      const btn = document.getElementById('downloadBtn');
+      const oldText = btn.textContent;
+      btn.textContent = 'Downloaded!';
+      btn.style.background = '#10b981';
+      setTimeout(() => {
+        btn.textContent = oldText;
+        btn.style.background = '';
+      }, 1000);
+    }
+
+    // ============================================================
+    // INITIALIZE OMNIBASE
+    // ============================================================
+    
+    const base = new OmniBase({
+      elements: {
+        container: canvasContainer,
+        controls: document.getElementById('controls'),
+        multiscroller: document.getElementById('multiscroller')
+      },
+      sliderConfig: SLIDER_CONFIG,
+      enablePanZoom: false, // We handle our own pan/zoom
+      aspectRatio: 1,
+      hintHtml: '<b>Drag</b> to pan. <b>Scroll</b> to zoom.<br><b>maxTensors</b>: limits metadata entries loaded (change applies to next file)',
+      
+      onRender: (params, panZoom, instance) => {
+        const viewMode = params.viewMode || 0;
+        
+        // Update view mode transition
+        textOutput.style.opacity = 1 - viewMode;
+        canvas.style.opacity = viewMode;
+        
+        const isCanvasMode = viewMode >= 0.5;
+        textOutput.classList.toggle('active', !isCanvasMode);
+        canvas.classList.toggle('active', isCanvasMode);
+        canvasContainer.classList.toggle('scrolling', !isCanvasMode);
+        
+        // Update renderer settings
+        renderer.blockSpacing = params.blockSpacing || 20;
+        renderer.tensorScale = params.tensorScale || 1.0;
+        renderer.zoom = params.zoom || 1.0;
+        
+        // Render if in canvas mode and have data
+        if (viewMode > 0 && currentModel) {
+          renderer.draw();
+        }
+      },
+      
+      onParamChange: (id, value, isData, instance) => {
+        // Handle parameter changes that need immediate response
+        if (id === 'zoom' && currentModel) {
+          renderer.zoom = value;
+          renderer.draw();
+        }
+        if (id === 'blockSpacing' && currentModel) {
+          renderer.blockSpacing = value;
+          renderer.draw();
+        }
+        if (id === 'tensorScale' && currentModel) {
+          renderer.tensorScale = value;
+          renderer.draw();
+        }
+      },
+      
+      onResize: (instance) => {
+        renderer.resize();
+      }
+    });
+    
+    // Make base instance available globally for renderer
+    window.baseInstance = base;
+    
+    // Initialize view mode state
+    base.render();
+    
+  })();
   </script>
 </body>
 </html>

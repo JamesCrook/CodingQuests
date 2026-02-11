@@ -627,12 +627,14 @@
         }
       }
     }
-    
+        
     function regenerate() {
       if (lastEntries) {
         processEntries(lastEntries);
       } else if (lastFiles) {
         processFiles(lastFiles);
+      } else if (treeData) {
+        generateOutput( false );  // Regenerate from existing tree
       }
     }
     
@@ -640,7 +642,7 @@
     // ASCII Generation
     // ============================================================
     
-    function generateOutput() {
+    function generateOutput( bRender=true ) {
       if (!treeData) return;
       
       let fileCount = 0;
@@ -681,16 +683,19 @@
       }
       
       asciiOutput.textContent = asciiText;
-      document.getElementById('folderName').textContent = treeData.name + '/';
-      document.getElementById('fileCount').textContent = fileCount;
-      document.getElementById('dirCount').textContent = dirCount;
-      
-      if (base) {
-        base.setStatus('Tree generated successfully');
-        setTimeout(() => base.clearStatus(), 3000);
+
+      if( bRender ){
+        document.getElementById('folderName').textContent = treeData.name + '/';
+        document.getElementById('fileCount').textContent = fileCount;
+        document.getElementById('dirCount').textContent = dirCount;
+        
+        if (base) {
+          base.setStatus('Tree generated successfully');
+          setTimeout(() => base.clearStatus(), 3000);
+        }
+        
+        if (base) render();
       }
-      
-      if (base) render();
     }
     
     // ============================================================

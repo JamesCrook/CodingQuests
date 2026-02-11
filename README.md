@@ -1,13 +1,11 @@
 # CodingQuests
 
-CodingQuests is a...
-
-This README is a place holder.
+CodingQuests is a new algorithm visualization workbench. Open source, MIT license.
 
 
 ## Current Status
 
-Right now... the part of CodingQuests most likely of interest is the /findings/ folder. 
+Right now... early days. Polymorphic data viewers are the main thing currently.
 
 ## Project Structure
 
@@ -16,6 +14,9 @@ Right now... the part of CodingQuests most likely of interest is the /findings/ 
 ├─ c_src/                    # C++ and Metal source code
 ├─ data/                     # Small sample data files for development (not full data files)
 ├─ website/                  # HTML, CSS, JavaScript for the web interface
+│  ├─ gguf-explorer.html     #  View meta data for LLMs
+│  ├─ css-refactor.html      #  CSS Refactoring tool
+│  ├─ omni<something>.html   #  Morphing data viewers
 │  └─ 3sat.html              #  How computers solve 3Sat
 ├─ py/                       # Python scripts
 │  ├─ ready_to_rock.py       #  Checks readiness; Sets up environment; Compiles code
@@ -31,12 +32,8 @@ Right now... the part of CodingQuests most likely of interest is the /findings/ 
 └─ README.md                 # This README
 ```
 
-C++/Objective-C provides accelerated versions of code that needs to be fast.
-
-The web UI uses API-endpoints provided by a FastAPI web server. 
 
 ## Links for AI Assistants
-Much of the code was created with AI assistance (Claude, Gemini, Jules). AI also helped with tracking down many cases where protein similarities were already known.
 
 AI assistants are guided to instructions they should follow by text like the text below:
 
@@ -44,5 +41,7 @@ See [docs/reference/specs/specs.md](./docs/reference/specs/specs.md) for IMPORTA
 
 ## Getting started
 
-See [GETTING_STARTED.md](./GETTING_STARTED.md) in this directory for instructions on getting started.
+For the viewers in /website you don't need a webserver, so you can just use them as is already and drag and drop files into them. The web server will be needed when there is heavy data crunching happenning and databases to access.
+
+Coming Spring 2026: See [GETTING_STARTED.md](./GETTING_STARTED.md) in this directory for instructions on getting started with a FastAPI server.
 

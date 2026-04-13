@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scatter ↔ Gather</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0b;
+      --bg-secondary: #131316;
+      --bg-tertiary: #1a1a1f;
+      --bg-hover: #222228;
+      --border: #2a2a32;
+      --border-focus: #4a4a55;
+      --text-primary: #e8e8ec;
+      --text-secondary: #9898a4;
+      --text-muted: #5a5a66;
+      --accent: #f59e0b;
+      --accent-dim: #b45309;
+      --accent-bg: rgba(245, 158, 11, 0.08);
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.08);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.08);
+      --gather-color: #818cf8;
+      --gather-bg: rgba(129, 140, 248, 0.1);
+      --scatter-color: #34d399;
+      --scatter-bg: rgba(52, 211, 153, 0.1);
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Space Grotesk', sans-serif;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-secondary);
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    h1 span { color: var(--accent); }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    /* ── Main layout ── */
+    main {
+      display: grid;
+      grid-template-columns: 240px 1fr 320px;
+      overflow: hidden;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel:last-child { border-right: none; }
+
+    .panel-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header .count {
+      background: var(--bg-tertiary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    /* ── Drop Zone ── */
+    .drop-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      border: 2px dashed var(--border);
+      margin: 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-bg);
+    }
+
+    .drop-zone-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+    }
+
+    .drop-zone p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .drop-zone small {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    /* ── File List ── */
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .file-item:hover { background: var(--bg-hover); }
+
+    .file-item.active {
+      background: var(--accent-bg);
+      border-left: 2px solid var(--accent);
+      padding-left: calc(0.5rem - 2px);
+    }
+
+    .file-item .filename {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .file-item:hover .filename { color: var(--accent); }
+
+    .file-item .badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      padding: 0.1rem 0.3rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .badge-to {
+      background: var(--scatter-bg);
+      color: var(--scatter-color);
+    }
+
+    .badge-from {
+      background: var(--gather-bg);
+      color: var(--gather-color);
+    }
+
+    /* ── Preview Panel ── */
+    .preview-lines {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      line-height: 1.7;
+    }
+
+    .preview-line {
+      display: flex;
+      padding: 0 0.5rem;
+      border-radius: 2px;
+    }
+
+    .preview-line-num {
+      color: var(--text-muted);
+      width: 3.5ch;
+      text-align: right;
+      margin-right: 1rem;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .preview-line-text {
+      white-space: pre;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .preview-line.is-heading {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .preview-line.is-to {
+      background: var(--scatter-bg);
+      color: var(--scatter-color);
+    }
+
+    .preview-line.is-from {
+      background: var(--gather-bg);
+      color: var(--gather-color);
+    }
+
+    .preview-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      gap: 0.5rem;
+    }
+
+    /* ── Operations Panel ── */
+    .ops-section {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ops-section:last-child { border-bottom: none; }
+
+    .ops-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .ops-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .ops-row label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      min-width: 4rem;
+      flex-shrink: 0;
+    }
+
+    .ops-input, .ops-select {
+      flex: 1;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.3rem 0.45rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-primary);
+      outline: none;
+      min-width: 0;
+    }
+
+    .ops-input:focus, .ops-select:focus {
+      border-color: var(--accent);
+    }
+
+    .ops-input::placeholder { color: var(--text-muted); }
+
+    .ops-select { cursor: pointer; }
+
+    .ops-desc {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 0.5rem;
+    }
+
+    .ops-summary {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      background: var(--bg-tertiary);
+      padding: 0.4rem 0.5rem;
+      border-radius: 3px;
+      margin-bottom: 0.5rem;
+      line-height: 1.6;
+    }
+
+    .ops-summary .count-highlight {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ── Relationships ── */
+    .rel-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      border-radius: 3px;
+      margin-bottom: 0.2rem;
+    }
+
+    .rel-item:hover { background: var(--bg-hover); }
+
+    .rel-heading {
+      color: var(--text-primary);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rel-arrow {
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .rel-file {
+      color: var(--accent);
+      flex-shrink: 0;
+      max-width: 10ch;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rel-tag {
+      font-size: 0.55rem;
+      padding: 0.05rem 0.25rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn:hover { background: var(--bg-hover); border-color: var(--border-focus); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn svg { width: 14px; height: 14px; }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent-dim);
+    }
+
+    .btn-gather {
+      background: var(--gather-bg);
+      border-color: rgba(129, 140, 248, 0.3);
+      color: var(--gather-color);
+    }
+
+    .btn-gather:hover {
+      background: rgba(129, 140, 248, 0.2);
+    }
+
+    .btn-scatter {
+      background: var(--scatter-bg);
+      border-color: rgba(52, 211, 153, 0.3);
+      color: var(--scatter-color);
+    }
+
+    .btn-scatter:hover {
+      background: rgba(52, 211, 153, 0.2);
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.55rem;
+      font-size: 0.7rem;
+    }
+
+    /* ── Status ── */
+    .status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Scatter <span>↔</span> Gather</h1>
+      <div class="header-actions">
+        <button class="btn" id="btnRescan" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Rescan
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Files Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          Files
+          <span class="count" id="fileCount">0</span>
+        </div>
+        <div class="panel-content" id="filesContent">
+          <div class="drop-zone" id="dropZone">
+            <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/>
+            </svg>
+            <p>Drop a folder here</p>
+            <small>.md files</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          Preview
+          <span class="count" id="previewFile">—</span>
+        </div>
+        <div class="panel-content" id="previewContent">
+          <div class="preview-placeholder">
+            <span>Select a file to preview</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations Panel -->
+      <div class="panel">
+        <div class="panel-header">Operations</div>
+        <div class="panel-content" id="opsContent" style="padding:0;">
+
+          <!-- Bootstrap -->
+          <div class="ops-section">
+            <div class="ops-label">Bootstrap</div>
+            <div class="ops-desc">Find matching headings across files and set up To/From tags, moving content to the destination.</div>
+            <div class="ops-row">
+              <label>Level</label>
+              <select class="ops-select" id="bootstrapLevel">
+                <option value="2">##</option>
+                <option value="3" selected>###</option>
+                <option value="4">####</option>
+                <option value="5">#####</option>
+              </select>
+            </div>
+            <div class="ops-row">
+              <label>Pattern</label>
+              <input type="text" class="ops-input" id="bootstrapPattern" placeholder="e.g. Methods">
+            </div>
+            <div class="ops-row">
+              <label>Dest file</label>
+              <select class="ops-select" id="bootstrapDest">
+                <option value="">Select…</option>
+              </select>
+            </div>
+            <div class="ops-row" style="justify-content:flex-end; margin-top:0.5rem;">
+              <button class="btn btn-primary btn-sm" id="btnBootstrap" disabled>Bootstrap</button>
+            </div>
+          </div>
+
+          <!-- Gather -->
+          <div class="ops-section">
+            <div class="ops-label">Gather</div>
+            <div class="ops-desc">Pull content from source files into the destination, following To: tags.</div>
+            <div class="ops-row">
+              <label>Into</label>
+              <select class="ops-select" id="gatherDest">
+                <option value="">Select…</option>
+              </select>
+            </div>
+            <div class="ops-summary" id="gatherSummary" style="display:none;"></div>
+            <div class="ops-row" style="justify-content:flex-end;">
+              <button class="btn btn-gather btn-sm" id="btnGather" disabled>Gather</button>
+            </div>
+          </div>
+
+          <!-- Scatter -->
+          <div class="ops-section">
+            <div class="ops-label">Scatter</div>
+            <div class="ops-desc">Push content from the gathered file back to source files, following From: tags.</div>
+            <div class="ops-row">
+              <label>From</label>
+              <select class="ops-select" id="scatterSource">
+                <option value="">Select…</option>
+              </select>
+            </div>
+            <div class="ops-summary" id="scatterSummary" style="display:none;"></div>
+            <div class="ops-row" style="justify-content:flex-end;">
+              <button class="btn btn-scatter btn-sm" id="btnScatter" disabled>Scatter</button>
+            </div>
+          </div>
+
+          <!-- Relationships -->
+          <div class="ops-section">
+            <div class="ops-label">Relationships</div>
+            <div id="relsContent" style="max-height:200px; overflow-y:auto;">
+              <div class="ops-desc">No To/From tags found yet.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <div class="status" id="status">Ready</div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════
+    // State
+    // ═══════════════════════════════════════════════════════════════
+    const state = {
+      directoryHandle: null,
+      files: new Map(),       // path → { handle, content }
+      activeFile: null,       // path of file shown in preview
+      relationships: []       // [{ sourceFile, destFile, heading, tag:'to'|'from', line }]
+    };
+
+    const $ = id => document.getElementById(id);
+    const escHtml = s => s.replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const setStatus = (msg, type = '') => {
+      $('status').textContent = msg;
+      $('status').className = 'status' + (type ? ` ${type}` : '');
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // Markdown parsing
+    // ═══════════════════════════════════════════════════════════════
+    const HEADING_RE = /^(#{1,6})\s+(.+)$/;
+    const TO_RE = /^\*\*To:\s*\[([^\]]+)\]\(([^)]*)\)\*\*\s*$/;
+    const FROM_RE = /^\*\*From:\s*\[([^\]]+)\]\(([^)]*)\)\*\*\s*$/;
+
+    function parseDocument(content) {
+      const lines = content.split('\n');
+      const sections = [];
+      for (let i = 0; i < lines.length; i++) {
+        const hm = lines[i].match(HEADING_RE);
+        if (!hm) continue;
+        const level = hm[1].length;
+        const title = hm[2].trim();
+        let tag = null, tagFile = null;
+        if (i + 1 < lines.length) {
+          const tm = lines[i + 1].match(TO_RE);
+          const fm = lines[i + 1].match(FROM_RE);
+          if (tm) { tag = 'to'; tagFile = tm[1]; }
+          if (fm) { tag = 'from'; tagFile = fm[1]; }
+        }
+        sections.push({ line: i, level, title, tag, tagFile });
+      }
+      return sections;
+    }
+
+    /** Return the content lines of a section (after heading + optional tag, up to next same-or-higher heading). */
+    function getSectionRange(lines, headingIdx, level) {
+      let contentStart = headingIdx + 1;
+      // Skip To:/From: tag line if present
+      if (contentStart < lines.length && (TO_RE.test(lines[contentStart]) || FROM_RE.test(lines[contentStart]))) {
+        contentStart++;
+      }
+      let contentEnd = contentStart;
+      while (contentEnd < lines.length) {
+        const hm = lines[contentEnd].match(HEADING_RE);
+        if (hm && hm[1].length <= level) break;
+        contentEnd++;
+      }
+      return { contentStart, contentEnd };
+    }
+
+    /** Extract content text from a section (may be empty / whitespace-only). */
+    function extractSectionContent(lines, headingIdx, level) {
+      const { contentStart, contentEnd } = getSectionRange(lines, headingIdx, level);
+      return lines.slice(contentStart, contentEnd).join('\n');
+    }
+
+    /** Delete content from a section, keeping heading + tag. Returns new lines array. */
+    function deleteSectionContent(lines, headingIdx, level) {
+      const { contentStart, contentEnd } = getSectionRange(lines, headingIdx, level);
+      const out = [...lines];
+      out.splice(contentStart, contentEnd - contentStart);
+      return out;
+    }
+
+    /** Insert content into a section (appended after any existing content). Returns new lines array. */
+    function insertSectionContent(lines, headingIdx, level, newContent) {
+      const { contentEnd } = getSectionRange(lines, headingIdx, level);
+      const toInsert = newContent.replace(/\n+$/, '');
+      if (!toInsert.trim()) return lines;
+      const out = [...lines];
+      // Insert before contentEnd, adding a blank line separator if there's existing content
+      const existing = extractSectionContent(lines, headingIdx, level).trim();
+      const insertLines = (existing ? '\n' : '') + toInsert + '\n';
+      out.splice(contentEnd, 0, ...insertLines.split('\n'));
+      return out;
+    }
+
+    /** Build a relative path from one file to another within the tree. */
+    function relPath(fromFile, toFile) {
+      const fromParts = fromFile.split('/').slice(0, -1);
+      const toParts = toFile.split('/');
+      let common = 0;
+      while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) {
+        common++;
+      }
+      const ups = fromParts.length - common;
+      const path = [...Array(ups).fill('..'), ...toParts.slice(common)].join('/');
+      return path.startsWith('.') ? path : './' + path;
+    }
+
+    function makeToTag(fromFile, toFile) {
+      const name = toFile.split('/').pop();
+      return `**To: [${name}](${relPath(fromFile, toFile)})**`;
+    }
+
+    function makeFromTag(destFile, sourceFile) {
+      const name = sourceFile.split('/').pop();
+      return `**From: [${name}](${relPath(destFile, sourceFile)})**`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // File system
+    // ═══════════════════════════════════════════════════════════════
+    async function readDirectory(dirHandle, path = '') {
+      const entries = [];
+      for await (const entry of dirHandle.values()) {
+        if (entry.name.startsWith('.')) continue;
+        const entryPath = path ? `${path}/${entry.name}` : entry.name;
+        if (entry.kind === 'directory') {
+          entries.push(...await readDirectory(entry, entryPath));
+        } else if (entry.kind === 'file' && /\.md$/i.test(entry.name)) {
+          entries.push({ handle: entry, path: entryPath });
+        }
+      }
+      return entries;
+    }
+
+    async function readFileContent(handle) {
+      return await (await handle.getFile()).text();
+    }
+
+    async function writeFileContent(handle, content) {
+      const w = await handle.createWritable();
+      await w.write(content);
+      await w.close();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Scanning
+    // ═══════════════════════════════════════════════════════════════
+    async function scanFiles() {
+      if (!state.directoryHandle) return;
+      setStatus('Scanning…');
+      state.files.clear();
+      state.relationships = [];
+
+      try {
+        const entries = await readDirectory(state.directoryHandle);
+        for (const { handle, path } of entries) {
+          const content = await readFileContent(handle);
+          state.files.set(path, { handle, content });
+        }
+        buildRelationships();
+        renderAll();
+        $('btnRescan').disabled = false;
+        setStatus(`Scanned ${state.files.size} markdown files`, 'success');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    function buildRelationships() {
+      state.relationships = [];
+      for (const [path, { content }] of state.files) {
+        const sections = parseDocument(content);
+        for (const sec of sections) {
+          if (sec.tag === 'to') {
+            state.relationships.push({
+              sourceFile: path,
+              destFile: resolveLinkedFile(path, sec.tagFile),
+              heading: sec.title,
+              tag: 'to',
+              line: sec.line
+            });
+          } else if (sec.tag === 'from') {
+            state.relationships.push({
+              sourceFile: resolveLinkedFile(path, sec.tagFile),
+              destFile: path,
+              heading: sec.title,
+              tag: 'from',
+              line: sec.line
+            });
+          }
+        }
+      }
+    }
+
+    /** Resolve a linked filename (may be just a basename) to a full path in state.files. */
+    function resolveLinkedFile(fromPath, linkedName) {
+      // linkedName is the display text from the link, e.g. "methods.md"
+      // Try to find exact match first
+      if (state.files.has(linkedName)) return linkedName;
+      // Try resolving relative to fromPath's directory
+      const dir = fromPath.includes('/') ? fromPath.split('/').slice(0, -1).join('/') : '';
+      const resolved = dir ? `${dir}/${linkedName}` : linkedName;
+      if (state.files.has(resolved)) return resolved;
+      // Fuzzy: find any file ending with that name
+      for (const p of state.files.keys()) {
+        if (p.endsWith(linkedName) || p.endsWith('/' + linkedName)) return p;
+      }
+      return linkedName; // best effort
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Operations
+    // ═══════════════════════════════════════════════════════════════
+
+    async function doBootstrap() {
+      const level = parseInt($('bootstrapLevel').value);
+      const pattern = $('bootstrapPattern').value.trim();
+      const destPath = $('bootstrapDest').value;
+      if (!pattern || !destPath) {
+        setStatus('Set pattern and destination', 'error');
+        return;
+      }
+
+      const destData = state.files.get(destPath);
+      if (!destData) { setStatus('Destination file not found', 'error'); return; }
+
+      setStatus('Bootstrapping…');
+      const hashes = '#'.repeat(level);
+      const headingRe = new RegExp(`^${hashes}\\s+.*${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*$`, 'i');
+
+      try {
+        let destLines = destData.content.split('\n');
+        let movedCount = 0;
+
+        for (const [path, data] of state.files) {
+          if (path === destPath) continue;
+          let lines = data.content.split('\n');
+          const sections = parseDocument(lines.join('\n'));
+
+          // Process in reverse order so line indices stay valid
+          const matches = sections.filter(s => s.level === level && headingRe.test(lines[s.line]));
+          for (let i = matches.length - 1; i >= 0; i--) {
+            const sec = matches[i];
+            // Skip if already has a To: tag
+            if (sec.tag === 'to') continue;
+
+            const content = extractSectionContent(lines, sec.line, sec.level);
+            const headingText = lines[sec.line];
+
+            // Delete content from source, insert To: tag
+            lines = deleteSectionContent(lines, sec.line, sec.level);
+            // Insert To: tag after heading
+            const toTag = makeToTag(path, destPath);
+            lines.splice(sec.line + 1, 0, toTag);
+
+            // Add to dest: heading + From: tag + content
+            const fromTag = makeFromTag(destPath, path);
+            const addition = [
+              '',
+              headingText,
+              fromTag,
+              content.replace(/\n+$/, ''),
+              ''
+            ].join('\n');
+            destLines.push(...addition.split('\n'));
+
+            movedCount++;
+          }
+
+          const newContent = lines.join('\n');
+          if (newContent !== data.content) {
+            data.content = newContent;
+            await writeFileContent(data.handle, newContent);
+          }
+        }
+
+        // Write dest
+        const destContent = destLines.join('\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '');
+        destData.content = destContent;
+        await writeFileContent(destData.handle, destContent);
+
+        buildRelationships();
+        renderAll();
+        if (state.activeFile) renderPreview(state.activeFile);
+        setStatus(`Bootstrapped ${movedCount} sections into ${destPath}`, 'success');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    async function doGather() {
+      const destPath = $('gatherDest').value;
+      if (!destPath) return;
+      const destData = state.files.get(destPath);
+      if (!destData) { setStatus('Destination file not found', 'error'); return; }
+
+      setStatus('Gathering…');
+
+      try {
+        let destLines = destData.content.split('\n');
+        let movedCount = 0;
+
+        // For each source file, find sections with To: pointing to destPath
+        for (const [path, data] of state.files) {
+          if (path === destPath) continue;
+          let lines = data.content.split('\n');
+          const sections = parseDocument(lines.join('\n'));
+
+          const toSections = sections.filter(s =>
+            s.tag === 'to' && resolveLinkedFile(path, s.tagFile) === destPath
+          );
+
+          if (toSections.length === 0) continue;
+
+          // Find corresponding From: sections in dest, matched by order within this file pair
+          const destSections = parseDocument(destLines.join('\n'));
+          const fromSections = destSections.filter(s =>
+            s.tag === 'from' && resolveLinkedFile(destPath, s.tagFile) === path
+          );
+
+          // Process in reverse so indices stay valid in source
+          for (let i = toSections.length - 1; i >= 0; i--) {
+            const srcSec = toSections[i];
+            const content = extractSectionContent(lines, srcSec.line, srcSec.level).trim();
+            if (!content) continue; // nothing to move
+
+            // Re-parse destLines since we may have modified them
+            const freshDestSections = parseDocument(destLines.join('\n'));
+            const freshFrom = freshDestSections.filter(s =>
+              s.tag === 'from' && resolveLinkedFile(destPath, s.tagFile) === path
+            );
+
+            if (i < freshFrom.length) {
+              // Matching From: section exists — insert content there
+              destLines = insertSectionContent(destLines, freshFrom[i].line, freshFrom[i].level, content);
+            } else {
+              // No matching From: section — create heading + From: tag + content at end of dest
+              const headingText = lines[srcSec.line];
+              const fromTag = makeFromTag(destPath, path);
+              const addition = ['', headingText, fromTag, content, ''];
+              destLines.push(...addition);
+            }
+
+            // Delete content from source
+            lines = deleteSectionContent(lines, srcSec.line, srcSec.level);
+            movedCount++;
+          }
+
+          const newContent = lines.join('\n');
+          if (newContent !== data.content) {
+            data.content = newContent;
+            await writeFileContent(data.handle, newContent);
+          }
+        }
+
+        const destContent = destLines.join('\n');
+        destData.content = destContent;
+        await writeFileContent(destData.handle, destContent);
+
+        buildRelationships();
+        renderAll();
+        if (state.activeFile) renderPreview(state.activeFile);
+        setStatus(`Gathered ${movedCount} sections into ${destPath}`, 'success');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    async function doScatter() {
+      const srcPath = $('scatterSource').value;
+      if (!srcPath) return;
+      const srcData = state.files.get(srcPath);
+      if (!srcData) { setStatus('Source file not found', 'error'); return; }
+
+      setStatus('Scattering…');
+
+      try {
+        let srcLines = srcData.content.split('\n');
+        let movedCount = 0;
+
+        // Group From: sections by target file
+        const sections = parseDocument(srcLines.join('\n'));
+        const fromSections = sections.filter(s => s.tag === 'from');
+
+        // Group by target file
+        const byFile = new Map();
+        for (const sec of fromSections) {
+          const targetFile = resolveLinkedFile(srcPath, sec.tagFile);
+          if (!byFile.has(targetFile)) byFile.set(targetFile, []);
+          byFile.get(targetFile).push(sec);
+        }
+
+        for (const [targetPath, secs] of byFile) {
+          const targetData = state.files.get(targetPath);
+          if (!targetData) continue;
+
+          let targetLines = targetData.content.split('\n');
+
+          // Find matching To: sections in target file
+          const targetSections = parseDocument(targetLines.join('\n'));
+          const toSections = targetSections.filter(s =>
+            s.tag === 'to' && resolveLinkedFile(targetPath, s.tagFile) === srcPath
+          );
+
+          // Process each From: section (forward, but refresh indices)
+          for (let i = 0; i < secs.length; i++) {
+            // Re-parse source since indices shift
+            const freshSrcSections = parseDocument(srcLines.join('\n'));
+            const freshFrom = freshSrcSections.filter(s =>
+              s.tag === 'from' && resolveLinkedFile(srcPath, s.tagFile) === targetPath
+            );
+            if (i >= freshFrom.length) break;
+
+            const fSec = freshFrom[i];
+            const content = extractSectionContent(srcLines, fSec.line, fSec.level).trim();
+            if (!content) continue;
+
+            // Find matching To: section in target
+            const freshTargetSections = parseDocument(targetLines.join('\n'));
+            const freshTo = freshTargetSections.filter(s =>
+              s.tag === 'to' && resolveLinkedFile(targetPath, s.tagFile) === srcPath
+            );
+            if (i < freshTo.length) {
+              targetLines = insertSectionContent(targetLines, freshTo[i].line, freshTo[i].level, content);
+            } else {
+              // No matching To: section — create heading + To: tag + content at end of target
+              const headingText = srcLines[fSec.line];
+              const toTag = makeToTag(targetPath, srcPath);
+              const addition = ['', headingText, toTag, content, ''];
+              targetLines.push(...addition);
+            }
+
+            // Delete content from source
+            // Re-parse again since indices shift per iteration
+            const reParsed = parseDocument(srcLines.join('\n'));
+            const reFrom = reParsed.filter(s =>
+              s.tag === 'from' && resolveLinkedFile(srcPath, s.tagFile) === targetPath
+            );
+            if (i < reFrom.length) {
+              srcLines = deleteSectionContent(srcLines, reFrom[i].line, reFrom[i].level);
+            }
+
+            movedCount++;
+          }
+
+          const targetContent = targetLines.join('\n');
+          if (targetContent !== targetData.content) {
+            targetData.content = targetContent;
+            await writeFileContent(targetData.handle, targetContent);
+          }
+        }
+
+        const srcContent = srcLines.join('\n');
+        srcData.content = srcContent;
+        await writeFileContent(srcData.handle, srcContent);
+
+        buildRelationships();
+        renderAll();
+        if (state.activeFile) renderPreview(state.activeFile);
+        setStatus(`Scattered ${movedCount} sections from ${srcPath}`, 'success');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Rendering
+    // ═══════════════════════════════════════════════════════════════
+    function renderAll() {
+      renderFiles();
+      renderFileDropdowns();
+      renderRelationships();
+      updateGatherSummary();
+      updateScatterSummary();
+    }
+
+    function renderFiles() {
+      const el = $('filesContent');
+      if (state.files.size === 0) {
+        el.innerHTML = `
+          <div class="drop-zone" id="dropZone">
+            <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/>
+            </svg>
+            <p>Drop a folder here</p>
+            <small>.md files</small>
+          </div>`;
+        setupDropZone();
+        return;
+      }
+
+      const sorted = [...state.files.keys()].sort();
+      el.innerHTML = sorted.map(path => {
+        const isActive = path === state.activeFile;
+        // Count To/From tags in this file
+        const toCount = state.relationships.filter(r => r.sourceFile === path && r.tag === 'to').length;
+        const fromCount = state.relationships.filter(r => r.destFile === path && r.tag === 'from').length;
+        return `
+          <div class="file-item${isActive ? ' active' : ''}" data-path="${escHtml(path)}">
+            <span class="filename">${escHtml(path)}</span>
+            ${toCount ? `<span class="badge badge-to">${toCount} to</span>` : ''}
+            ${fromCount ? `<span class="badge badge-from">${fromCount} from</span>` : ''}
+          </div>`;
+      }).join('');
+
+      el.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', () => {
+          state.activeFile = item.dataset.path;
+          renderFiles();
+          renderPreview(state.activeFile);
+        });
+      });
+
+      $('fileCount').textContent = state.files.size;
+    }
+
+    function renderPreview(path) {
+      const data = state.files.get(path);
+      const el = $('previewContent');
+      $('previewFile').textContent = path.split('/').pop();
+
+      if (!data) {
+        el.innerHTML = '<div class="preview-placeholder">File not found</div>';
+        return;
+      }
+
+      const lines = data.content.split('\n');
+      el.innerHTML = '<div class="preview-lines">' + lines.map((line, idx) => {
+        let cls = 'preview-line';
+        if (HEADING_RE.test(line)) cls += ' is-heading';
+        else if (TO_RE.test(line)) cls += ' is-to';
+        else if (FROM_RE.test(line)) cls += ' is-from';
+        return `<div class="${cls}"><span class="preview-line-num">${idx + 1}</span><span class="preview-line-text">${escHtml(line)}</span></div>`;
+      }).join('') + '</div>';
+    }
+
+    function renderFileDropdowns() {
+      const paths = [...state.files.keys()].sort();
+      const options = '<option value="">Select…</option>' +
+        paths.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+
+      $('bootstrapDest').innerHTML = options;
+      $('gatherDest').innerHTML = options;
+      $('scatterSource').innerHTML = options;
+    }
+
+    function renderRelationships() {
+      const el = $('relsContent');
+      if (state.relationships.length === 0) {
+        el.innerHTML = '<div class="ops-desc">No To/From tags found.</div>';
+        return;
+      }
+
+      el.innerHTML = state.relationships.map(r => {
+        const arrow = r.tag === 'to' ? '→' : '←';
+        const tagCls = r.tag === 'to' ? 'badge-to' : 'badge-from';
+        const otherFile = r.tag === 'to' ? r.destFile : r.sourceFile;
+        return `<div class="rel-item">
+          <span class="rel-tag ${tagCls}">${r.tag}</span>
+          <span class="rel-heading" title="${escHtml(r.heading)}">${escHtml(r.heading)}</span>
+          <span class="rel-arrow">${arrow}</span>
+          <span class="rel-file" title="${escHtml(otherFile)}">${escHtml(otherFile.split('/').pop())}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function updateGatherSummary() {
+      const destPath = $('gatherDest').value;
+      const el = $('gatherSummary');
+      $('btnGather').disabled = !destPath;
+
+      if (!destPath) { el.style.display = 'none'; return; }
+
+      const toRels = state.relationships.filter(r => r.tag === 'to' && r.destFile === destPath);
+      // Count which have movable content
+      let withContent = 0;
+      for (const r of toRels) {
+        const data = state.files.get(r.sourceFile);
+        if (!data) continue;
+        const lines = data.content.split('\n');
+        const sections = parseDocument(data.content);
+        const sec = sections.find(s => s.line === r.line);
+        if (!sec) continue;
+        const content = extractSectionContent(lines, sec.line, sec.level).trim();
+        if (content) withContent++;
+      }
+
+      if (toRels.length === 0) {
+        el.innerHTML = 'No To: tags point to this file.';
+      } else {
+        el.innerHTML = `<span class="count-highlight">${toRels.length}</span> sections linked, <span class="count-highlight">${withContent}</span> with content to move.`;
+      }
+      el.style.display = 'block';
+    }
+
+    function updateScatterSummary() {
+      const srcPath = $('scatterSource').value;
+      const el = $('scatterSummary');
+      $('btnScatter').disabled = !srcPath;
+
+      if (!srcPath) { el.style.display = 'none'; return; }
+
+      const fromRels = state.relationships.filter(r => r.tag === 'from' && r.destFile === srcPath);
+      let withContent = 0;
+      for (const r of fromRels) {
+        const data = state.files.get(r.destFile);
+        if (!data) continue;
+        const lines = data.content.split('\n');
+        const sections = parseDocument(data.content);
+        const sec = sections.find(s => s.line === r.line);
+        if (!sec) continue;
+        const content = extractSectionContent(lines, sec.line, sec.level).trim();
+        if (content) withContent++;
+      }
+
+      if (fromRels.length === 0) {
+        el.innerHTML = 'No From: tags found in this file.';
+      } else {
+        el.innerHTML = `<span class="count-highlight">${fromRels.length}</span> sections linked, <span class="count-highlight">${withContent}</span> with content to move.`;
+      }
+      el.style.display = 'block';
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Event setup
+    // ═══════════════════════════════════════════════════════════════
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => e.preventDefault());
+
+    function setupDropZone() {
+      const dz = $('dropZone');
+      if (!dz) return;
+
+      dz.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); dz.classList.add('drag-over'); });
+      dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+      dz.addEventListener('drop', async e => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.remove('drag-over');
+        for (const item of e.dataTransfer.items) {
+          if (item.kind === 'file') {
+            const handle = await item.getAsFileSystemHandle();
+            if (handle.kind === 'directory') {
+              state.directoryHandle = handle;
+              await scanFiles();
+              return;
+            }
+          }
+        }
+        setStatus('Please drop a folder', 'error');
+      });
+      dz.addEventListener('click', async () => {
+        try {
+          state.directoryHandle = await window.showDirectoryPicker();
+          await scanFiles();
+        } catch (err) {
+          if (err.name !== 'AbortError') setStatus(`Error: ${err.message}`, 'error');
+        }
+      });
+    }
+
+    function init() {
+      setupDropZone();
+
+      $('btnRescan').addEventListener('click', () => scanFiles());
+
+      $('btnBootstrap').addEventListener('click', doBootstrap);
+      $('btnGather').addEventListener('click', doGather);
+      $('btnScatter').addEventListener('click', doScatter);
+
+      // Enable/disable buttons on dropdown change
+      $('bootstrapDest').addEventListener('change', () => {
+        $('btnBootstrap').disabled = !$('bootstrapDest').value || !$('bootstrapPattern').value.trim();
+      });
+      $('bootstrapPattern').addEventListener('input', () => {
+        $('btnBootstrap').disabled = !$('bootstrapDest').value || !$('bootstrapPattern').value.trim();
+      });
+      $('gatherDest').addEventListener('change', () => { updateGatherSummary(); });
+      $('scatterSource').addEventListener('change', () => { updateScatterSummary(); });
+    }
+
+    init();
+  </script>
+</body>
+</html>
